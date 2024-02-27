@@ -1,50 +1,44 @@
 import sys
-import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
 doc_folder = '../doc/'
-def manipulate_ciphertext(file_name, position, original_text, new_text):
-    with open(doc_folder + file_name, 'rb') as f:
+def modify_ciphertext(file_to_modify, position, new_plaintext):
+    with open(doc_folder + file_to_modify, "rb") as f:
         ciphertext = f.read()
 
-    # Determina o tamanho do nonce e do contador baseado no tamanho do bloco do algoritmo
-    nonce_size = ciphertext[:16]
-    counter_size = ciphertext[16:]
+    # O nonce é de tamanho fixo em ChaCha20, então pegamos os primeiros 16 bytes do criptograma
+    nonce = ciphertext[:16]
+    ciphertext = ciphertext[16:]
 
-    # Divide o texto cifrado em nonce, contador e o restante do texto
-    nonce = ciphertext[:nonce_size]
-    counter = ciphertext[nonce_size:nonce_size+counter_size]
-    encrypted_data = ciphertext[nonce_size+counter_size:]
-
-    # Decifra o texto original na posição especificada
-    cipher = Cipher(algorithms.ChaCha20(os.urandom(32), nonce), mode=None, backend=default_backend())
+    # Decifrando o bloco afetado para descobrir o estado do keystream
+    cipher = Cipher(algorithms.ChaCha20(b"\x00" * 32, nonce), mode=None, backend=default_backend())
     decryptor = cipher.decryptor()
-    decrypted_data = decryptor.update(encrypted_data)
+    keystream_block = decryptor.update(ciphertext[position:position + 64]) + decryptor.finalize()
 
-    # Substitui o texto original pelo novo texto na posição especificada
-    manipulated_data = decrypted_data[:position] + new_text.encode() + decrypted_data[position+len(new_text):]
+    # Obtendo o texto-limpo original na posição fornecida
+    original_plaintext = bytearray(keystream_block)[:len(new_plaintext)]
 
-    # Cifra novamente o texto manipulado
-    cipher = Cipher(algorithms.ChaCha20(os.urandom(32), nonce), mode=None, backend=default_backend())
-    encryptor = cipher.encryptor()
-    manipulated_encrypted_data = encryptor.update(manipulated_data)
-
-    # Escreve o novo texto cifrado no arquivo com a extensão .attck
-    output_file = file_name + '.attck'
-    with open(doc_folder + output_file, 'wb') as f:
-        f.write(nonce + counter + manipulated_encrypted_data)
-
-    print("Texto cifrado manipulado salvo em", output_file)
-
+    # Modificando o texto-limpo na posição especificada
+    modified_keystream = bytearray(keystream_block)
+    modified_keystream[:len(new_plaintext)] = bytearray(new_plaintext)
+    # Realizando XOR entre o keystream modificado e o bloco do criptograma afetado
+    modified_ciphertext = bytearray(ciphertext)
+    modified_ciphertext[position:position + 64] = bytes(x ^ y for x, y in zip(modified_keystream, ciphertext[position:position + 64]))
+    # Gravando o criptograma modificado no arquivo
+    with open(doc_folder + file_to_modify + ".attck", "wb") as f:
+        f.write(nonce + bytes(modified_ciphertext))
 if __name__ == "__main__":
     if len(sys.argv) != 5:
-        print("Uso: python chacha20_int_attck.py <fctxt> <pos> <ptxtAtPos> <newPtxtAtPos>")
+        print("Usage: python chacha20_int_attck.py <fctxt> <pos> <ptxtAtPos> <newPtxtAtPos>")
         sys.exit(1)
 
-    file_name = sys.argv[1]
+    file_to_modify = sys.argv[1]
     position = int(sys.argv[2])
-    original_text = sys.argv[3]
-    new_text = sys.argv[4]
+    original_plaintext = sys.argv[3].encode()
+    new_plaintext = sys.argv[4].encode()
 
-    manipulate_ciphertext(file_name, position, original_text, new_text)
+    modify_ciphertext(file_to_modify, position, new_plaintext)
+    print("Ciphertext modified successfully.")
+
+    # COMANDO: python chacha20_int_attck.py input.txt.enc 12 exemplo criptografado
