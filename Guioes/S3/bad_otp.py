@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 
 def bad_prng(n):
     """Um gerador de números pseudo-aleatórios INSEGURO."""

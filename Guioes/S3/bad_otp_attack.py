@@ -1,5 +1,6 @@
 import sys
 from itertools import cycle
+import random
 
 def bad_prng(n):
     """Um gerador de números pseudo-aleatórios INSEGURO."""
