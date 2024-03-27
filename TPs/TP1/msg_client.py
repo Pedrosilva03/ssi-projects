@@ -1,140 +1,89 @@
-import sys
+# Código baseado em https://docs.python.org/3.6/library/asyncio-stream.html#tcp-echo-client-using-streams
 import asyncio
-import os
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hmac
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
+import socket
 
-conn_port = 8443
-max_msg_size = 9999
-backend = default_backend()
-salt = b'salt'
-iterations = 100000
-key_len = 32
+conn_port = 8445
+max_msg_size = 10000
 
 class Client:
-    def __init__(self, sckt=None, user_file='userdata.p12'):
+    """ Classe que implementa a funcionalidade de um CLIENTE. """
+    def __init__(self, sckt=None):
+        """ Construtor da classe. """
         self.sckt = sckt
         self.msg_cnt = 0
-        self.aead = None
-        self.user_file = user_file
-        self.user_cert = None
-        self.server_cert = None
 
-    def process(self, cmd):
-        self.msg_cnt += 1
+    def recive(self, msg=b''):
 
-        if cmd == 'send':
-            return self.send_msg()
-        elif cmd == 'askqueue':
-            return self.ask_queue()
-        elif cmd == 'getmsg':
-            num = input("Enter message number to retrieve: ")
-            return self.get_msg(int(num))
-        elif cmd == 'help':
-            return self.print_help()
+        """ Processa uma mensagem (`bytestring`) enviada pelo SERVIDOR.
+            Retorna a mensagem a transmitir como resposta (`None` para
+            finalizar ligação) """
+        self.msg_cnt +=1
+        #
+        # ALTERAR AQUI COMPORTAMENTO DO CLIENTE
+        #
+
+        print('Received (%d): %r' % (self.msg_cnt , msg.decode()))
+        return None
+    
+    def send(self):
+        print('Input message to send (empty to finish)')
+        new_msg = input()
+    
+        tokens = new_msg.split()
+        if len(tokens) > 1 and tokens[0] == '-user':
+            print("Falta configurar")
+        elif len(tokens) > 1 and tokens[0] == 'send':
+            mensagem = input("Mensagem: ")
+            return (tokens[1] + " " + tokens[2] + " " + mensagem).encode() if len(new_msg)>0 else None
+        elif tokens[0] == 'askqueue':
+            print("Falta configurar")
+            return None
+        elif len(tokens) > 1 and tokens[0] == 'getmsg':
+            print("Falta configurar")
+            return None
+        elif tokens[0] == 'help':
+            print("-------------------- HELP ---------------------")
+            print("send <user> <msg> - Envia uma mensagem para o utilizador <user>")
+            print("askqueue - Lista as mensagens por ler do utilizador")
+            print("getmsg - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
+            print("exit - Termina a ligação")
+            print("-----------------------------------------------")
+            return None
         else:
-            return b"MSG RELAY SERVICE: command error!\n" + self.print_help()
+            print("MSG RELAY SERVICE: command error!")
+            print("-------------------- HELP ---------------------")
+            print("send <user> <msg> - Envia uma mensagem para o utilizador <user>")
+            print("askqueue - Lista as mensagens por ler do utilizador")
+            print("getmsg - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
+            print("exit - Termina a ligação")
+            print("-----------------------------------------------")
+            return None
 
-    def send_msg(self):
-        uid = input("Enter recipient's UID: ")
-        subject = input("Enter message subject: ")
-        content = input("Enter message content (limited to 1000 bytes): ")[:1000]
+#
+#
+# Funcionalidade Cliente/Servidor
+#
+# obs: não deverá ser necessário alterar o que se segue
+#
 
-        if not self.aead:
-            self.generate_key(uid)
 
-        nonce = os.urandom(12)
-        ciphertext = self.aead.encrypt(nonce, content.encode(), associated_data=subject.encode())
-
-        return f"send {uid} {subject}\n{ciphertext}".encode(), nonce
-
-    def ask_queue(self):
-        return b"askqueue\n"
-
-    def get_msg(self, num):
-        return f"getmsg {num}\n".encode()
-
-    def print_help(self):
-        return b"Usage:\n-user <FNAME>\tSpecify user data file (default: userdata.p12)\n" \
-               b"send <UID> <SUBJECT>\tSend a message\n" \
-               b"askqueue\tRequest unread messages\n" \
-               b"getmsg <NUM>\tRetrieve a specific message\n" \
-               b"help\tPrint this help message\n"
-
-    def generate_key(self, uid):
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=key_len,
-            salt=salt,
-            iterations=iterations,
-            backend=backend
-        )
-        key = kdf.derive(uid.encode())
-        self.aead = AESGCM(key)
-
-    def load_user_cert(self):
-        with open(f'projCA/certs/{self.user_file}', 'rb') as f:
-            keystore = f.read()
-        
-        # Load certificate and private key from keystore
-        user_cert, user_key, _ = serialization.pkcs12.load_key_and_certificates(
-            keystore, password=None, backend=default_backend()
-        )
-
-        self.user_cert = user_cert
-        self.user_key = user_key
-
-    def load_server_cert(self):
-        with open('projCA/certs/MSG_SERVER.crt', 'rb') as f:
-            server_cert_data = f.read()
-        self.server_cert = x509.load_pem_x509_certificate(server_cert_data, backend=default_backend())
-
-async def tcp_echo_client(user_file):
+async def tcp_echo_client():
     reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
     addr = writer.get_extra_info('peername')
-    client = Client(addr, user_file)
-    client.load_user_cert()
-    client.load_server_cert()
-
-    writer.write(obter_nome_arquivo_sem_extensao(user_file).encode())
-
-    while True:
-        cmd = input("Enter command: ").strip()
-        if not cmd:
-            continue
-
-        msg, nonce = client.process(cmd.split()[0])
+    client = Client(addr)
+    msg = client.send()
+    if msg:
         writer.write(msg)
-        writer.write(nonce)
-        print(nonce)
-        await writer.drain()
-
-        if cmd.split()[0] == 'getmsg':
-            msg = await reader.read(max_msg_size)
-            print(msg.decode())
-            continue
-
         msg = await reader.read(max_msg_size)
-        print(msg.decode())
 
-def run_client(user_file):
+        if msg :
+            msg = client.recive(msg)
+            writer.write(b'\n')
+    writer.close()
+
+def run_client():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(tcp_echo_client(user_file))
+    loop.run_until_complete(tcp_echo_client())
 
-def obter_nome_arquivo_sem_extensao(nome_arquivo):
-    nome_base, _ = os.path.splitext(nome_arquivo)
-    return nome_base
 
-if __name__ == '__main__':
-    user_file = 'userdata.p12'
-    if len(sys.argv) > 1 and sys.argv[1] == '-user':
-        user_file = sys.argv[2]
-    run_client(user_file)
+run_client()
