@@ -1,16 +1,26 @@
 # Código baseado em https://docs.python.org/3.6/library/asyncio-stream.html#tcp-echo-client-using-streams
 import asyncio
 import socket
+import sys
+from cryptography.hazmat.primitives.serialization import pkcs12
 
 conn_port = 8445
 max_msg_size = 10000
 
 class Client:
     """ Classe que implementa a funcionalidade de um CLIENTE. """
-    def __init__(self, sckt=None):
+    def __init__(self, sckt=None, user='userdata.p12'):
         """ Construtor da classe. """
         self.sckt = sckt
         self.msg_cnt = 0
+        self.user = user
+
+    def get_userdata(p12_fname):
+        with open(p12_fname, "rb") as f:
+            p12 = f.read()
+        password = None # p12 não está protegido...
+        (private_key, user_cert, [ca_cert]) = pkcs12.load_key_and_certificates(p12, password)
+        return (private_key, user_cert, ca_cert)
 
     def recive(self, msg=b''):
 
@@ -49,6 +59,8 @@ class Client:
             print("exit - Termina a ligação")
             print("-----------------------------------------------")
             return None
+        elif tokens[0] == 'exit':
+            return '0'
         else:
             print("MSG RELAY SERVICE: command error!")
             print("-------------------- HELP ---------------------")
@@ -67,23 +79,35 @@ class Client:
 #
 
 
-async def tcp_echo_client():
+async def tcp_echo_client(args):
     reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
     addr = writer.get_extra_info('peername')
-    client = Client(addr)
-    msg = client.send()
-    if msg:
-        writer.write(msg)
-        msg = await reader.read(max_msg_size)
 
-        if msg :
-            msg = client.recive(msg)
-            writer.write(b'\n')
+    user = None
+    if len(args) > 2:
+        if args[1] == '-user':
+            user = args[2]
+    client = Client(addr, f'{user}.p12')
+
+    status = 1
+
+    while status == 1:
+        msg = client.send()
+        if msg:
+            if int(msg) == 0:
+                status = 0
+            else:
+                writer.write(msg)
+                msg = await reader.read(max_msg_size)
+
+                if msg:
+                    msg = client.recive(msg)
+                    writer.write(b'\n')
     writer.close()
 
 def run_client():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(tcp_echo_client())
+    loop.run_until_complete(tcp_echo_client(sys.argv))
 
 
 run_client()
