@@ -1,9 +1,15 @@
 # Código baseado em https://docs.python.org/3.6/library/asyncio-stream.html#tcp-echo-client-using-streams
 import asyncio
+from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
 
 conn_cnt = 0
 conn_port = 8445
 max_msg_size = 9999
+
+folder = 'projCA/certs/'
 
 class ServerWorker(object):
     """ Classe que implementa a funcionalidade do SERVIDOR. """
@@ -12,14 +18,30 @@ class ServerWorker(object):
         self.id = cnt
         self.addr = addr
         self.msg_cnt = 0
+
+    def get_userdata(self, p12_fname):
+        with open(f'{folder}{p12_fname}', "rb") as f:
+            p12 = f.read()
+        password = None # p12 não está protegido...
+        (private_key, user_cert, [ca_cert]) = pkcs12.load_key_and_certificates(p12, password)
+        public_key = user_cert.public_key()
+        return (private_key, user_cert, ca_cert, public_key)
+
     def process(self, msg):
         """ Processa uma mensagem (`bytestring`) enviada pelo CLIENTE.
             Retorna a mensagem a transmitir como resposta (`None` para
             finalizar ligação) """
         self.msg_cnt += 1
-        #
-        # ALTERAR AQUI COMPORTAMENTO DO SERVIDOR
-        #        
+
+        msg = msg.decode()
+
+        message, signature = msg.split('\n\n')
+        dest, subj, msg = message.split("||")
+
+        (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{dest}.p12')
+
+        verify_signature(public_key, msg.encode(), signature)
+
         txt = msg.decode()
         print('%d : %r' % (self.id,txt))
         new_msg = txt.upper().encode()
@@ -34,7 +56,21 @@ class ServerWorker(object):
 # obs: não deverá ser necessário alterar o que se segue
 #
 
-
+def verify_signature(public_key, message, signature):
+    try:
+        public_key.verify(
+            signature.encode(),
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return True
+    except InvalidSignature:
+        return False
+    
 async def handle_echo(reader, writer):
     global conn_cnt
     conn_cnt +=1

@@ -3,9 +3,12 @@ import asyncio
 import socket
 import sys
 from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
 
 conn_port = 8445
 max_msg_size = 10000
+folder = 'projCA/certs/'
 
 class Client:
     """ Classe que implementa a funcionalidade de um CLIENTE. """
@@ -15,14 +18,15 @@ class Client:
         self.msg_cnt = 0
         self.user = user
 
-    def get_userdata(p12_fname):
-        with open(p12_fname, "rb") as f:
+    def get_userdata(self, p12_fname):
+        with open(f'{folder}{p12_fname}', "rb") as f:
             p12 = f.read()
         password = None # p12 não está protegido...
         (private_key, user_cert, [ca_cert]) = pkcs12.load_key_and_certificates(p12, password)
-        return (private_key, user_cert, ca_cert)
+        public_key = user_cert.public_key()
+        return (private_key, user_cert, ca_cert, public_key)
 
-    def recive(self, msg=b''):
+    def receive(self, msg=b''):
 
         """ Processa uma mensagem (`bytestring`) enviada pelo SERVIDOR.
             Retorna a mensagem a transmitir como resposta (`None` para
@@ -35,16 +39,45 @@ class Client:
         print('Received (%d): %r' % (self.msg_cnt , msg.decode()))
         return None
     
+    def sender(self, dest, subj, msg):
+
+        dest_data = f'{dest}.p12'
+        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(dest_data)
+
+        encrypted_message = dest_public_key.encrypt(
+            msg.encode(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
+
+        encrypted_message = encrypted_message.decode()
+
+        signature = private_key.sign(
+            encrypted_message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        signed_message = f'{dest}||{subj}||{encrypted_message}\n\n{signature}'
+
+        return signed_message
+        
     def send(self):
         print('Input message to send (empty to finish)')
         new_msg = input()
     
         tokens = new_msg.split()
-        if len(tokens) > 1 and tokens[0] == '-user':
-            print("Falta configurar")
-        elif len(tokens) > 1 and tokens[0] == 'send':
+        if len(tokens) > 1 and tokens[0] == 'send':
             mensagem = input("Mensagem: ")
-            return (tokens[1] + " " + tokens[2] + " " + mensagem).encode() if len(new_msg)>0 else None
+            return self.sender(tokens[1], tokens[2], mensagem)
+            #return (tokens[1] + " " + tokens[2] + " " + mensagem).encode() if len(new_msg)>0 else None
         elif tokens[0] == 'askqueue':
             print("Falta configurar")
             return None
@@ -60,7 +93,7 @@ class Client:
             print("-----------------------------------------------")
             return None
         elif tokens[0] == 'exit':
-            return '0'
+            return 'None'
         else:
             print("MSG RELAY SERVICE: command error!")
             print("-------------------- HELP ---------------------")
@@ -94,15 +127,19 @@ async def tcp_echo_client(args):
     while status == 1:
         msg = client.send()
         if msg:
-            if int(msg) == 0:
-                status = 0
-            else:
-                writer.write(msg)
-                msg = await reader.read(max_msg_size)
+            try:
+                msg.decode()
+            except:
+                if(msg == 'None'):
+                    status = 0
+                else:
+                    writer.write(msg.encode())
+                    msg = await reader.read(max_msg_size)
 
-                if msg:
-                    msg = client.recive(msg)
-                    writer.write(b'\n')
+                    if msg:
+                        msg = client.receive(msg)
+                        writer.write(b'\n')
+                
     writer.close()
 
 def run_client():
