@@ -66,7 +66,7 @@ class Client:
         signature_hex = signature_bytes.hex()
 
         # Criando a mensagem com os dados criptografados e assinatura
-        signed_message = f'{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
+        signed_message = f'send;;{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
 
         return signed_message
 

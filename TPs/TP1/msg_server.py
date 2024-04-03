@@ -40,26 +40,26 @@ class ServerWorker(object):
         self.msg_cnt += 1
 
         msg = msg.decode()
-
-        message, signature = msg.split('\n\n')
+        tipo, tail = msg.split(';;')
+        message, signature = tail.split('\n\n')
         dest, subj, msg_text = message.split("||")
 
         (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{dest}.p12')
+        if tipo == 'send':
+            if verify_signature(public_key, msg_text.encode(), signature):
+                # Criar uma instância da classe Message com os dados recebidos
+                message_obj = Message(dest, subj, msg_text)
+                # Salvar a mensagem em algum lugar, como um arquivo de log
+                with open('messages.log', 'a') as f:
+                    f.write(str(message_obj) + '\n')
+                print("Mensagem nº %d recebida e salva em messages.log" % self.id)
 
-        if verify_signature(public_key, msg_text.encode(), signature):
-            # Criar uma instância da classe Message com os dados recebidos
-            message_obj = Message(dest, subj, msg_text)
-            # Salvar a mensagem em algum lugar, como um arquivo de log
-            with open('messages.log', 'a') as f:
-                f.write(str(message_obj) + '\n')
-            print("Mensagem nº %d recebida e salva em messages.log" % self.id)
-
-            txt = msg_text
-            new_msg = txt.upper().encode()
-            return new_msg if len(new_msg) > 0 else None
-        else:
-            print("Assinatura inválida. Mensagem descartada.")
-            return None
+                txt = msg_text
+                new_msg = txt.upper().encode()
+                return new_msg if len(new_msg) > 0 else None
+            else:
+                print("Assinatura inválida. Mensagem descartada.")
+                return None
 
 
 
