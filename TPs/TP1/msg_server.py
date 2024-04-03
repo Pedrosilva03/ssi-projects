@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from datetime import datetime
+import os
 
 conn_cnt = 0
 conn_port = 8445
@@ -50,22 +51,22 @@ class ServerWorker(object):
         if tipo == 'send':
             message, signature = tail.split('\n\n')
             origem, dest, subj, msg_text = message.split("||")
-            (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{dest}.p12')
+            (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{obter_nome_arquivo_sem_extensao(origem)}.p12')
 
-            # if verify_signature(public_key, msg_text.encode(), signature):
+            if verify_signature(public_key, msg_text, signature):
             # Criar uma instância da classe Message com os dados recebidos
-            message_obj = Message(origem, dest, datetime.now(), subj, msg_text)
+                message_obj = Message(origem, dest, datetime.now(), subj, msg_text)
             # Salvar a mensagem em algum lugar, como um arquivo de log
-            with open('messages.log', 'a') as f:
-                f.write(str(message_obj) + '\n')
-            print("Mensagem nº %d recebida e salva em messages.log" % self.id)
+                with open('messages.log', 'a') as f:
+                    f.write(str(message_obj) + '\n')
+                print("Mensagem nº %d recebida e salva em messages.log" % self.id)
 
-            txt = msg_text
-            new_msg = txt.upper().encode()
-            return "ME".encode()
-        # else:
-        # print("Assinatura inválida. Mensagem descartada.")
-        # return None
+                txt = msg_text
+                new_msg = txt.upper().encode()
+                return "ME".encode()
+            else:
+                print("Assinatura inválida. Mensagem descartada.")
+                return None
 
         elif tipo == 'askqueue':
             mensagens = [tail]
@@ -107,7 +108,9 @@ class ServerWorker(object):
             
 
 
-
+def obter_nome_arquivo_sem_extensao(nome_arquivo):
+    nome_base, _ = os.path.splitext(nome_arquivo)
+    return nome_base
 
 #
 #
@@ -120,10 +123,11 @@ def verify_signature(public_key, message, signature_hex):
     try:
         # Convertendo a assinatura de hexadecimal para bytes
         signature = bytes.fromhex(signature_hex)
+        message_dec = bytes.fromhex(message)
         
         public_key.verify(
             signature,
-            message,
+            message_dec,
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH
