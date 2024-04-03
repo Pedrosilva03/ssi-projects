@@ -98,20 +98,20 @@ class Client:
             return resposta
         elif tokens[0] == 'help':
             print("-------------------- HELP ---------------------")
-            print("send <user> <msg> - Envia uma mensagem para o utilizador <user>")
+            print("send <user> <subject> - Envia uma mensagem no máximo de 1000 bytes para o utilizador <user> com o assunto <subject>")
             print("askqueue - Lista as mensagens por ler do utilizador")
             print("getmsg - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
             print("exit - Termina a ligação")
             print("-----------------------------------------------")
             return None
         elif tokens[0] == 'exit':
-            return None
+            return "exit"
         else:
             print("MSG RELAY SERVICE: command error!")
             print("-------------------- HELP ---------------------")
             print("send <user> <msg> - Envia uma mensagem para o utilizador <user>")
             print("askqueue - Lista as mensagens por ler do utilizador")
-            print("getmsg - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
+            print("getmsg <NUM> - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
             print("exit - Termina a ligação")
             print("-----------------------------------------------")
             return None
@@ -125,8 +125,12 @@ class Client:
 
 
 async def tcp_echo_client(args):
-    reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
-    addr = writer.get_extra_info('peername')
+    try:
+        reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
+        addr = writer.get_extra_info('peername')
+    except ConnectionRefusedError:
+        print("Erro: Servidor Indisponível")
+        return
 
     user = None
     if len(args) > 2:
@@ -139,6 +143,9 @@ async def tcp_echo_client(args):
     while status == 1:
         msg = client.send()
         if msg:
+            if msg == "exit":
+                writer.close()
+                return KeyboardInterrupt
             writer.write(msg.encode())
             await writer.drain()  # Aguarda até que todos os dados sejam enviados
             msg = await reader.read(max_msg_size)
