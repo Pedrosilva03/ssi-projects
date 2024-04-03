@@ -84,6 +84,25 @@ class ServerWorker(object):
             print(resposta)
             # Enviando a resposta para o cliente
             return resposta.encode()
+        
+        elif tipo == 'getmsg':
+            partes = tail.split("//")
+            i = int(partes[1])
+
+            # Lendo as mensagens salvas no arquivo de log e formatando
+            with open('messages.log', 'r') as f:
+                j = 1
+                for linha in f:
+                    if j == i:
+                        parteslinha = linha.split(";;")
+                        if (parteslinha[1] + ".p12") == partes[0]:
+                            resposta = f"{parteslinha[4]}"
+                            print(resposta)
+                            return ("R//" + resposta).encode()
+                        else: 
+                            resposta = "Sem autorização para acessar essa mensagem"
+                            return ("R//" + resposta).encode()
+                    else: j += 1
 
             
 

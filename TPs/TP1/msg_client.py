@@ -5,6 +5,7 @@ import sys
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.x509 import load_pem_x509_certificate
 
 conn_port = 8445
 max_msg_size = 10000
@@ -26,6 +27,7 @@ class Client:
         public_key = user_cert.public_key()
         return (private_key, user_cert, ca_cert, public_key)
 
+
     def receive(self, msg=b''):
         if msg.decode() == "ME": print("Mensagem enviada com sucesso")
         else:
@@ -34,7 +36,13 @@ class Client:
                 for i in range(1, len(partes)):
                     mensagens = partes[i].split(";;")
                     print(f'<{mensagens[0]}>:<{mensagens[1]}>:<{mensagens[2]}>:<{mensagens[3]}>')
+            elif partes[0] == "R":
+                print(partes[1])
+                # FALTA DESCODIFICAR A MENSAGEM E DE RESTO ESTÁ FEITO ACHO EU
+        
         return None
+
+
     
     def sender(self, dest, subj, msg):
         dest_data = dest + ".p12"
@@ -86,8 +94,8 @@ class Client:
             resposta = "askqueue;;" + self.user
             return resposta
         elif len(tokens) > 1 and tokens[0] == 'getmsg':
-            print("Falta configurar")
-            return None
+            resposta = "getmsg;;" + self.user + "//" + tokens[1]
+            return resposta
         elif tokens[0] == 'help':
             print("-------------------- HELP ---------------------")
             print("send <user> <msg> - Envia uma mensagem para o utilizador <user>")
