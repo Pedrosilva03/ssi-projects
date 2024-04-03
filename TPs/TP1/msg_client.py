@@ -27,11 +27,13 @@ class Client:
         return (private_key, user_cert, ca_cert, public_key)
 
     def receive(self, msg=b''):
-        """ Processa uma mensagem (`bytestring`) enviada pelo SERVIDOR.
-            Retorna a mensagem a transmitir como resposta (`None` para
-            finalizar ligação) """
-        self.msg_cnt +=1
-        print('Received (%d): %r' % (self.msg_cnt , msg.decode()))
+        if msg.decode() == "ME": print("Mensagem enviada com sucesso")
+        else:
+            partes = msg.decode().split("//")
+            if partes[0] == self.user:
+                for i in range(1, len(partes)):
+                    mensagens = partes[i].split(";;")
+                    print(f'<{mensagens[0]}>:<{mensagens[1]}>:<{mensagens[2]}>:<{mensagens[3]}>')
         return None
     
     def sender(self, dest, subj, msg):
@@ -66,7 +68,7 @@ class Client:
         signature_hex = signature_bytes.hex()
 
         # Criando a mensagem com os dados criptografados e assinatura
-        signed_message = f'send;;{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
+        signed_message = f'send;;{self.user}||{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
 
         return signed_message
 
@@ -81,8 +83,8 @@ class Client:
             mensagem = input("Mensagem: ")
             return self.sender(tokens[1], tokens[2], mensagem)
         elif tokens[0] == 'askqueue':
-            print("Falta configurar")
-            return None
+            resposta = "askqueue;;" + self.user
+            return resposta
         elif len(tokens) > 1 and tokens[0] == 'getmsg':
             print("Falta configurar")
             return None

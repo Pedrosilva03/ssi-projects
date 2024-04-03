@@ -1,9 +1,11 @@
 # Código baseado em https://docs.python.org/3.6/library/asyncio-stream.html#tcp-echo-client-using-streams
 import asyncio
+from csv import writer
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
+from datetime import datetime
 
 conn_cnt = 0
 conn_port = 8445
@@ -12,13 +14,15 @@ max_msg_size = 9999
 folder = 'projCA/certs/'
 
 class Message:
-    def __init__(self, dest, subj, msg_text):
+    def __init__(self, origem, dest, time, subj, msg_text):
+        self.origem = origem
         self.dest = dest
+        self.time = time
         self.subj = subj
         self.msg_text = msg_text
 
     def __str__(self):
-        return f"{self.dest};;{self.subj};;{self.msg_text}"
+        return f"{self.origem};;{self.dest};;{self.time};;{self.subj};;{self.msg_text}"
 
 class ServerWorker(object):
     """ Classe que implementa a funcionalidade do SERVIDOR. """
@@ -41,25 +45,48 @@ class ServerWorker(object):
 
         msg = msg.decode()
         tipo, tail = msg.split(';;')
-        message, signature = tail.split('\n\n')
-        dest, subj, msg_text = message.split("||")
+        
 
-        (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{dest}.p12')
         if tipo == 'send':
-            if verify_signature(public_key, msg_text.encode(), signature):
-                # Criar uma instância da classe Message com os dados recebidos
-                message_obj = Message(dest, subj, msg_text)
-                # Salvar a mensagem em algum lugar, como um arquivo de log
-                with open('messages.log', 'a') as f:
-                    f.write(str(message_obj) + '\n')
-                print("Mensagem nº %d recebida e salva em messages.log" % self.id)
+            message, signature = tail.split('\n\n')
+            origem, dest, subj, msg_text = message.split("||")
+            (private_key, user_cert, ca_cert, public_key) = self.get_userdata(f'{dest}.p12')
 
-                txt = msg_text
-                new_msg = txt.upper().encode()
-                return new_msg if len(new_msg) > 0 else None
-            else:
-                print("Assinatura inválida. Mensagem descartada.")
-                return None
+            # if verify_signature(public_key, msg_text.encode(), signature):
+            # Criar uma instância da classe Message com os dados recebidos
+            message_obj = Message(origem, dest, datetime.now(), subj, msg_text)
+            # Salvar a mensagem em algum lugar, como um arquivo de log
+            with open('messages.log', 'a') as f:
+                f.write(str(message_obj) + '\n')
+            print("Mensagem nº %d recebida e salva em messages.log" % self.id)
+
+            txt = msg_text
+            new_msg = txt.upper().encode()
+            return "ME".encode()
+        # else:
+        # print("Assinatura inválida. Mensagem descartada.")
+        # return None
+
+        elif tipo == 'askqueue':
+            mensagens = [tail]
+            i = 0
+
+            # Lendo as mensagens salvas no arquivo de log e formatando
+            with open('messages.log', 'r') as f:
+                for linha in f:
+                    i += 1
+                    partes = linha.strip().split(";;")
+                    if (partes[1] + ".p12") == tail:
+                        print(tail)
+                        mensagens.append(f"{i};;{partes[0]};;{partes[2]};;{partes[3]}")
+
+            resposta = "//".join(mensagens)
+            print(resposta)
+            # Enviando a resposta para o cliente
+            return resposta.encode()
+
+            
+
 
 
 
@@ -104,14 +131,18 @@ async def handle_echo(reader, writer):
         if not data_str.strip():
             break
         
-        srvwrk.process(data)
+        response = srvwrk.process(data)
         
         # Se desejar enviar uma resposta ao cliente, você pode fazer isso aqui
-        # writer.write(response_data)
-        # await writer.drain()
+        if response:
+            writer.write(response)  # Remova .encode() se response já é um objeto bytes
+            await writer.drain()
 
     print("[%d]" % srvwrk.id)
     writer.close()
+
+
+
 
 
 def run_server():
