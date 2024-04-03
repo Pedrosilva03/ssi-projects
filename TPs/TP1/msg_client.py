@@ -27,21 +27,15 @@ class Client:
         return (private_key, user_cert, ca_cert, public_key)
 
     def receive(self, msg=b''):
-
         """ Processa uma mensagem (`bytestring`) enviada pelo SERVIDOR.
             Retorna a mensagem a transmitir como resposta (`None` para
             finalizar ligação) """
         self.msg_cnt +=1
-        #
-        # ALTERAR AQUI COMPORTAMENTO DO CLIENTE
-        #
-
         print('Received (%d): %r' % (self.msg_cnt , msg.decode()))
         return None
     
     def sender(self, dest, subj, msg):
-
-        dest_data = f'{dest}.p12'
+        dest_data = dest + ".p12"
         (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(dest_data)
 
         encrypted_message = dest_public_key.encrypt(
@@ -55,8 +49,6 @@ class Client:
 
         (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
 
-        encrypted_message = encrypted_message.decode()
-
         signature = private_key.sign(
             encrypted_message,
             padding.PSS(
@@ -65,9 +57,20 @@ class Client:
             ),
             hashes.SHA256()
         )
-        signed_message = f'{dest}||{subj}||{encrypted_message}\n\n{signature}'
+
+        # Convertendo a assinatura para uma sequência de bytes
+        signature_bytes = signature
+
+        # Convertendo as mensagens criptografadas e assinatura para hexadecimal
+        encrypted_message_hex = encrypted_message.hex()
+        signature_hex = signature_bytes.hex()
+
+        # Criando a mensagem com os dados criptografados e assinatura
+        signed_message = f'{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
 
         return signed_message
+
+
         
     def send(self):
         print('Input message to send (empty to finish)')
@@ -77,7 +80,6 @@ class Client:
         if len(tokens) > 1 and tokens[0] == 'send':
             mensagem = input("Mensagem: ")
             return self.sender(tokens[1], tokens[2], mensagem)
-            #return (tokens[1] + " " + tokens[2] + " " + mensagem).encode() if len(new_msg)>0 else None
         elif tokens[0] == 'askqueue':
             print("Falta configurar")
             return None
@@ -93,7 +95,7 @@ class Client:
             print("-----------------------------------------------")
             return None
         elif tokens[0] == 'exit':
-            return 'None'
+            return None
         else:
             print("MSG RELAY SERVICE: command error!")
             print("-------------------- HELP ---------------------")
@@ -127,20 +129,15 @@ async def tcp_echo_client(args):
     while status == 1:
         msg = client.send()
         if msg:
-            try:
-                msg.decode()
-            except:
-                if(msg == 'None'):
-                    status = 0
-                else:
-                    writer.write(msg.encode())
-                    msg = await reader.read(max_msg_size)
+            writer.write(msg.encode())
+            await writer.drain()  # Aguarda até que todos os dados sejam enviados
+            msg = await reader.read(max_msg_size)
 
-                    if msg:
-                        msg = client.receive(msg)
-                        writer.write(b'\n')
+            if msg:
+                msg = client.receive(msg)
                 
     writer.close()
+
 
 def run_client():
     loop = asyncio.get_event_loop()
