@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.x509 import load_pem_x509_certificate
 
-conn_port = 8445
+conn_port = 8446
 max_msg_size = 10000
 folder = 'projCA/certs/'
 
@@ -30,6 +30,7 @@ class Client:
 
     def receive(self, msg=b''):
         if msg.decode() == "ME": print("Mensagem enviada com sucesso")
+        if msg.decode() == self.user: print("Nenhuma mensagem por ler")
         else:
             partes = msg.decode().split("//")
             if partes[0] == self.user:
@@ -37,8 +38,20 @@ class Client:
                     mensagens = partes[i].split(";;")
                     print(f'<{mensagens[0]}>:<{mensagens[1]}>:<{mensagens[2]}>:<{mensagens[3]}>')
             elif partes[0] == "R":
-                print(partes[1])
-                # FALTA DESCODIFICAR A MENSAGEM E DE RESTO ESTÁ FEITO ACHO EU
+                if partes[1] == "NE": print("Número de mensagem inválido")
+                elif partes[1] == "SA": print("Sem autorização de consulta dessa mensagem")
+                else:
+                    encrypted_message = bytes.fromhex(partes[1])
+                    (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
+                    decrypted_message = private_key.decrypt(
+                        encrypted_message,
+                        padding.OAEP(
+                            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                            algorithm=hashes.SHA256(),
+                            label=None
+                        )
+                    )
+                    print(decrypted_message.decode())
         
         return None
 
@@ -80,8 +93,40 @@ class Client:
 
         return signed_message
 
+    def akqueue(self):
+        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
 
-        
+        encrypted_message = dest_public_key.encrypt(
+            self.user.encode(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        # Convertendo as mensagens criptografadas e assinatura para hexadecimal
+        encrypted_message_hex = encrypted_message.hex()
+        signed_message = f'askqueue;;{self.user}//{encrypted_message_hex}'
+        return signed_message
+
+    def getmsg(self, num):
+        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
+
+        encrypted_message = dest_public_key.encrypt(
+            num.encode(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        # Convertendo as mensagens criptografadas e assinatura para hexadecimal
+        encrypted_message_hex = encrypted_message.hex()
+        signed_message = f'getmsg;;{self.user}//{encrypted_message_hex}'
+        return signed_message
+    
     def send(self):
         print('Input message to send (empty to finish)')
         new_msg = input()
@@ -91,11 +136,10 @@ class Client:
             mensagem = input("Mensagem: ")
             return self.sender(tokens[1], tokens[2], mensagem)
         elif tokens[0] == 'askqueue':
-            resposta = "askqueue;;" + self.user
-            return resposta
+            return self.akqueue()
         elif len(tokens) > 1 and tokens[0] == 'getmsg':
-            resposta = "getmsg;;" + self.user + "//" + tokens[1]
-            return resposta
+            # resposta = "getmsg;;" + self.user + "//" + tokens[1]
+            return self.getmsg(tokens[1])
         elif tokens[0] == 'help':
             print("-------------------- HELP ---------------------")
             print("send <user> <subject> - Envia uma mensagem no máximo de 1000 bytes para o utilizador <user> com o assunto <subject>")
