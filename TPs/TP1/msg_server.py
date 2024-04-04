@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from datetime import datetime
 import os
 
+
 conn_cnt = 0
 conn_port = 8445
 max_msg_size = 9999
@@ -15,7 +16,8 @@ max_msg_size = 9999
 folder = 'projCA/certs/'
 
 class Message:
-    def __init__(self, origem, dest, time, subj, msg_text):
+    def __init__(self, check, origem, dest, time, subj, msg_text):
+        self.check = check
         self.origem = origem
         self.dest = dest
         self.time = time
@@ -23,7 +25,7 @@ class Message:
         self.msg_text = msg_text
 
     def __str__(self):
-        return f"{self.origem};;{self.dest};;{self.time};;{self.subj};;{self.msg_text}"
+        return f"{self.check};;{self.origem};;{self.dest};;{self.time};;{self.subj};;{self.msg_text}"
 
 class ServerWorker(object):
     """ Classe que implementa a funcionalidade do SERVIDOR. """
@@ -55,7 +57,7 @@ class ServerWorker(object):
 
             if verify_signature(public_key, msg_text, signature):
             # Criar uma instância da classe Message com os dados recebidos
-                message_obj = Message(origem, dest, datetime.now(), subj, msg_text)
+                message_obj = Message(0, origem, dest, datetime.now(), subj, msg_text)
             # Salvar a mensagem em algum lugar, como um arquivo de log
                 with open('messages.log', 'a') as f:
                     f.write(str(message_obj) + '\n')
@@ -77,36 +79,46 @@ class ServerWorker(object):
                 for linha in f:
                     i += 1
                     partes = linha.strip().split(";;")
-                    if (partes[1] + ".p12") == tail:
-                        print(tail)
-                        mensagens.append(f"{i};;{partes[0]};;{partes[2]};;{partes[3]}")
+                    if (partes[0] == '0' and (partes[2] + ".p12") == tail):
+                        mensagens.append(f"{i};;{partes[1]};;{partes[3]};;{partes[4]}")
 
             resposta = "//".join(mensagens)
-            print(resposta)
-            # Enviando a resposta para o cliente
             return resposta.encode()
         
         elif tipo == 'getmsg':
+            resposta = "Sem autorização para ler a mensagem"
             partes = tail.split("//")
             i = int(partes[1])
 
-            # Lendo as mensagens salvas no arquivo de log e formatando
+            # Verificar se o número de mensagem é maior do que o número total de linhas no arquivo
             with open('messages.log', 'r') as f:
-                j = 1
-                for linha in f:
-                    if j == i:
-                        parteslinha = linha.split(";;")
-                        if (parteslinha[1] + ".p12") == partes[0]:
-                            resposta = f"{parteslinha[4]}"
-                            print(resposta)
-                            return ("R//" + resposta).encode()
-                        else: 
-                            resposta = "Sem autorização para acessar essa mensagem"
-                            return ("R//" + resposta).encode()
-                    else: j += 1
+                num_linhas = sum(1 for linha in f)
+            if i > num_linhas:
+                resposta = "Número de mensagem não existente"
+                return ("R//" + resposta).encode()
+
+            with open('messages.log', 'r') as f:
+                lines = f.readlines()
+
+            # Modifique as linhas conforme necessário
+            for j, linha in enumerate(lines, start=1):
+                if j == i:
+                    parteslinha = linha.split(";;")
+                    if (parteslinha[2] + ".p12") == partes[0]:
+                        resposta = f"{parteslinha[5]}"
+                        parteslinha[0] = '1'
+                        lines[j - 1] = ";;".join(parteslinha)  # Substitui a linha especificada na lista de linhas
+                        break
+
+            # Reescreva o arquivo com as linhas modificadas
+            with open('messages.log', 'w') as f:
+                f.writelines(lines)
+
+            return ("R//" + resposta).encode()
+
+
 
             
-
 
 def obter_nome_arquivo_sem_extensao(nome_arquivo):
     nome_base, _ = os.path.splitext(nome_arquivo)
