@@ -93,7 +93,7 @@ class Client:
 
         return signed_message
 
-    def akqueue(self):
+    def askqueue(self):
         (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
 
         encrypted_message = dest_public_key.encrypt(
@@ -136,7 +136,7 @@ class Client:
             mensagem = input("Mensagem: ")
             return self.sender(tokens[1], tokens[2], mensagem)
         elif tokens[0] == 'askqueue':
-            return self.akqueue()
+            return self.askqueue()
         elif len(tokens) > 1 and tokens[0] == 'getmsg':
             # resposta = "getmsg;;" + self.user + "//" + tokens[1]
             return self.getmsg(tokens[1])
