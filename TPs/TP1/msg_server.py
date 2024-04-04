@@ -222,7 +222,6 @@ async def handle_echo(reader, writer):
             writer.write(response)  # Remova .encode() se response já é um objeto bytes
             await writer.drain()
 
-    print("[%d]" % srvwrk.id)
     writer.close()
 
 
