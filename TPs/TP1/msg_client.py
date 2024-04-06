@@ -6,6 +6,12 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.x509 import load_pem_x509_certificate
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import datetime
+import pytz
+from cryptography.hazmat.primitives import serialization
 
 conn_port = 8446
 max_msg_size = 10000
@@ -18,14 +24,41 @@ class Client:
         self.sckt = sckt
         self.msg_cnt = 0
         self.user = user
-
+        
     def get_userdata(self, p12_fname):
+        def verifica_validade_certificado(certificado):
+            try:
+                # Carrega o certificado
+                cert = x509.load_der_x509_certificate(certificado.public_bytes(serialization.Encoding.DER), default_backend())
+
+                # Obtém as datas de início e término de validade do certificado em UTC
+                not_valid_before_utc = cert.not_valid_before_utc
+                not_valid_after_utc = cert.not_valid_after_utc
+
+                # Obtém a data atual em UTC
+                data_atual_utc = datetime.datetime.now(datetime.timezone.utc)
+
+                # Verifica se o certificado está válido
+                if not_valid_before_utc <= data_atual_utc <= not_valid_after_utc:
+                    return True
+                else:
+                    return False
+            except Exception as e:
+                print("Ocorreu um erro ao verificar o certificado:", e)
+                return False
+
         with open(f'{folder}{p12_fname}', "rb") as f:
             p12 = f.read()
         password = None # p12 não está protegido...
         (private_key, user_cert, [ca_cert]) = pkcs12.load_key_and_certificates(p12, password)
         public_key = user_cert.public_key()
-        return (private_key, user_cert, ca_cert, public_key)
+        if verifica_validade_certificado(user_cert):
+            return (private_key, user_cert, ca_cert, public_key)
+        else:
+            return None
+    
+    
+
 
 
     def receive(self, msg=b''):
@@ -42,7 +75,12 @@ class Client:
                 elif partes[1] == "SA": print("Sem autorização de consulta dessa mensagem")
                 else:
                     encrypted_message = bytes.fromhex(partes[1])
+                    if self.get_userdata(self.user) == None:
+                        print("Certificado inválido")
+                        return None
+                    
                     (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
+                        
                     decrypted_message = private_key.decrypt(
                         encrypted_message,
                         padding.OAEP(
@@ -59,6 +97,14 @@ class Client:
     
     def sender(self, dest, subj, msg):
         dest_data = dest + ".p12"
+        if self.get_userdata(dest_data) == None:
+            print("Certificado inválido")
+            return None
+        
+        if self.get_userdata(self.user) == None:
+                        print("Certificado inválido")
+                        return None
+            
         (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(dest_data)
 
         encrypted_message = dest_public_key.encrypt(
@@ -94,6 +140,9 @@ class Client:
         return signed_message
 
     def askqueue(self):
+        if self.get_userdata(self.user) == None:
+            print("Certificado inválido")
+            return None
         (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
 
         encrypted_message = dest_public_key.encrypt(
@@ -111,6 +160,9 @@ class Client:
         return signed_message
 
     def getmsg(self, num):
+        if self.get_userdata(self.user) == None:
+            print("Certificado inválido")
+            return None
         (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
 
         encrypted_message = dest_public_key.encrypt(
@@ -134,7 +186,10 @@ class Client:
         tokens = new_msg.split()
         if len(tokens) > 1 and tokens[0] == 'send':
             mensagem = input("Mensagem: ")
-            return self.sender(tokens[1], tokens[2], mensagem)
+            subject = tokens[2]
+            for i in range(3, len(tokens)):
+                subject += " " + tokens[i]
+            return self.sender(tokens[1], subject, mensagem)
         elif tokens[0] == 'askqueue':
             return self.askqueue()
         elif len(tokens) > 1 and tokens[0] == 'getmsg':
@@ -170,8 +225,8 @@ class Client:
 
 async def tcp_echo_client(args):
     try:
-        reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
-        addr = writer.get_extra_info('peername')
+            reader, writer = await asyncio.open_connection('127.0.0.1', conn_port)
+            addr = writer.get_extra_info('peername')
     except ConnectionRefusedError:
         print("Erro: Servidor Indisponível")
         return
