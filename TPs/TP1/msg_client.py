@@ -199,7 +199,7 @@ class Client:
             print("-------------------- HELP ---------------------")
             print("send <user> <subject> - Envia uma mensagem no máximo de 1000 bytes para o utilizador <user> com o assunto <subject>")
             print("askqueue - Lista as mensagens por ler do utilizador")
-            print("getmsg - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
+            print("getmsg <NUM> - solicita ao servidor o envio da mensagem da sua queue com o número <NUM>")
             print("exit - Termina a ligação")
             print("-----------------------------------------------")
             return None
