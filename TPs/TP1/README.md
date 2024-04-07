@@ -35,14 +35,39 @@ Além das mensagens ficarem todas guardadas num `messages.log`, todos os comando
 
 2. Como já temos visto, sempre que é enviada uma mensagem, feito algum pedido ao servidor que fica registado, o servidor trata sempre de atribuir um *timestamp*, para manter um registo do momento em que as mensagens são recebidas e uma pessoa ter em conta se demorou muito tempo para recebê-la, o que pode causar problemas se for o caso. O servidor também não compromete confidencialidade pois a mensagem só passa por ele e é enviada para o cliente ainda encriptada, por exemplo, no `getmsg`, o cliente recebe a mensagem que pediu e é ele que tem de tratar de desencriptá-la, mantendo assim a confidencialidade. Como a mensagem está encriptada, o servidor não consegue manipular então nem conteúdo dela, nem o destino da mensagem 
 
-3. 
+3. Um cliente quando recebe uma mensagem utilizando o comando `getmsg` aparece-lhe a mensagem com a estrutura:
 
+```
+De: <SENDER>
+Data e Hora: <TIMESTAMP>
+Assunto: <SUBJECT>
+Mensagem: <MENSAGEM>
+```
 
+Logo o cliente consegue ver quem lhe a mandou mensagem, a que horas, o assunto da mensagem e a mensagem em si desencriptada. Também temos em conta dois casos de erro:
 
-## Identificação e credenciais dos utilizadores
+- `'GETMSG: {user} em {datetime.now()}: NÚMERO DE MENSAGEM INVÁLIDO\n'` -> caso de tentar aceder a uma mensagem que não existe
 
+- `'GETMSG: {user} em {datetime.now()} tentou consultar mensagem nº{i}: SEM AUTORIZAÇÃO DE CONSULTA DESSA MENSAGEM\n'` -> caso de tentar aceder a uma mensagem que não é sua
 
+Para enviar as mensagens, utitizou-se uma `class Message` para estruturá-la inicialmente e facilitar a sua criação com o uso de um `__str__`. Dá para vê-la a ser usada na função `process` quando acontece o comando `send`. A função que verifica assinaturas também se encontra no `msg_server.py`.
 
-## Possíveis valorizações
+## Opinião do grupo
+Durante a elaboração de todo o programa foram tomadas algumas decisões que passamos a explicar de seguida:
 
+- Embora a conexão TCP seja uma conexão segura e confiável, esta não é segura a nível de acessos indesejados durante a transmissão de dados, sendo assim, e tomando por base este mesmo perigo, decidimos aplicar alguns cuidados:
 
+1. Todas as mensagens enviadas pelo cliente são criptografadas em algum ponto permitindo assim que o servidor tenha a certeza de que o que o cliente solicitou é, de facto, verídico. Por exemplo, quando o `Cliente1` solicita um `askqueue` o programa envia para  servidor a seguinte linha: `askqueue;;cliente1//mensagem_criptografada\n\nsignature`, onde, este último argumento, é o próprio user `cliente1` mas criptografado com a public key do servidor e a `signature` é uma assinatura feita pelo cliente e verificada no servidor a fim de garantir que o cliente é, de facto, aquele que fez esta solicitação. Assim só o servidor poderá interpretar e responder àquela solicitação. Ao mesmo tempo, quando é feita um `getmsg` o número da mensagem é novamente criptografado; o que reduz a capacidade de compreensão de qual mensagem está a tentar ser acedida se algum cliente mal intencionado aceda ao fluxo de dados transmitidos entre ambas as partes.
+
+2. O próprio servidor é responsável por garantir que a informação é, de facto, segura e a correta para ser enviada para o cliente. Por exemplo, quando o cliente faz o pedido de uma mensagem é o próprio servidor que, antes de enviar a mensagem solicitada, verifica se aquela mensagem de facto tem como destinatário o cliente que solicitou. Isso garante que a informação transmitida no canal é a mínima necessária reduzindo, drasticamente, o risco presente durante a transmissão de dados.
+
+3. No entanto, o cliente também tem protocolos de segurança para salvaguardar o acesso inadequado. Por exemplo, quando é feito um askqueue, quando o servidor envia a resposta, o primeiro argumento é o user para o qual aquela mensagem deve chegar. Assim, o cliente antes de mostrar as mensagens por ler verifica se, de facto, aquelas são as suas mensagens não lidas. Caso tenha havido algum problema no servidor, as mensagens nunca serão expostas indevidamente.
+
+## Valorizações
+Ao longo da realização do trabalho tentamos desenvolver algumas valorizações que achavamos importantes e necessárias para um correto e bom funcionamento de todo o nosso programa.
+
+1. Em primeiro lugar, todas as mensagens enviadas para o servidor são guardadas num ficheiro `messages.log`. Estamos conscientes de que essa abordagem pode trazer alguns problemas, uma vez que, qualquer pessoa tem a possibilidade de aceder a esse mesmo ficheiro. No entanto, a informação que extrai deste não seria muito significativa, na medida em que, todas as mensagens estão criptogradas. Sendo assim, no máximo, esta pessoa apenas poderia saber quantas mensagens foram enviadas, para quem, quando e qual o assunto. Embora esta informação possa a vir a ser muito importante, não coloca muito em causa o verdadeiro conteúdo da mensagem. A possível solução para este problema seria criptografar este mesmo ficheiro onde só o servidor conseguisse aceder.
+
+Importante referir que, esta decisão foi tomada, uma vez que, mesmo que o servidor tenha algum problema e encerre, as mensagens nunca serão perdidas podendo voltar a trabalhar de forma normal sem perda de informação.
+
+2. Também é de mencionar que o servidor tem um ficheiro `server.log` responsável por guardar todas as informações referentes a cada transação feita pelos clientes; desde os comando `send` até aos `askqueue` ou mesmo um `getmsg`. Se houver necessidade um administrador tem sempre acesso à informação relativa aos pedidos bem como o seu estado. Podem ser `Sucesso` quando aquele pedido foi realizado sem nenhum erro ou podem tomar outras situações quando, por exemplo, a assinatura não é válida.
