@@ -7,6 +7,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from datetime import datetime
 import os
+import os
 
 
 conn_cnt = 0
@@ -97,12 +98,13 @@ class ServerWorker(object):
             i = 0
 
             # Lendo as mensagens salvas no arquivo de log e formatando
-            with open('messages.log', 'r') as f:
-                for linha in f:
-                    i += 1
-                    partes = linha.strip().split(";;")
-                    if (partes[0] == '0' and (partes[2] + ".p12") == user):
-                        mensagens.append(f"{i};;{partes[1]};;{partes[3]};;{partes[4]}")
+            if os.path.exists('messages.log'):
+                with open('messages.log', 'r') as f:
+                    for linha in f:
+                        i += 1
+                        partes = linha.strip().split(";;")
+                        if (partes[0] == '0' and (partes[2] + ".p12") == user):
+                            mensagens.append(f"{i};;{partes[1]};;{partes[3]};;{partes[4]}")
 
             resposta = "//".join(mensagens)
             with open('server.log', 'a') as f:
