@@ -147,7 +147,7 @@ class ServerWorker(object):
                 if j == i:
                     parteslinha = linha.split(";;")
                     if (parteslinha[2] + ".p12") == user:
-                        resposta = f"{parteslinha[5]}"
+                        resposta = f"{parteslinha[1]};;{parteslinha[3]};;{parteslinha[4]};;{parteslinha[5]}"
                         parteslinha[0] = '1'
                         lines[j - 1] = ";;".join(parteslinha)  # Substitui a linha especificada na lista de linhas
                         break

@@ -74,7 +74,8 @@ class Client:
                 if partes[1] == "NE": print("Número de mensagem inválido")
                 elif partes[1] == "SA": print("Sem autorização de consulta dessa mensagem")
                 else:
-                    encrypted_message = bytes.fromhex(partes[1])
+                    argumentos = partes[1].split(";;")
+                    encrypted_message = bytes.fromhex(argumentos[3])
                     if self.get_userdata(self.user) == None:
                         print("Certificado inválido")
                         return None
@@ -89,7 +90,12 @@ class Client:
                             label=None
                         )
                     )
-                    print(decrypted_message.decode())
+                    print("-------------------- MENSAGEM ---------------------")
+                    print(f'De: {argumentos[0]}')
+                    print(f'Data e Hora: {argumentos[1]}')
+                    print(f'Assunto: {argumentos[2]}')
+                    print(f'Mensagem: {decrypted_message.decode()}')
+                    print("--------------------------------------------------")
         
         return None
 
