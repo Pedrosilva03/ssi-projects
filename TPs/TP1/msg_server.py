@@ -76,96 +76,112 @@ class ServerWorker(object):
                 return None
 
         elif tipo == 'askqueue':
-            user, user_encode = tail.split("//")
-            encrypted_message = bytes.fromhex(user_encode)
+            user, u_encode = tail.split("//")
+            user_encode, signature = u_encode.split("\n\n")
             (private_key, user_cert, ca_cert, public_key) = self.get_userdata(user)
-            decrypted_message = private_key.decrypt(
-                encrypted_message,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
+
+            if verify_signature(public_key, user_encode, signature):
+                (private_key, user_cert, ca_cert, public_key) = self.get_userdata('MSG_SERVER.p12')
+                encrypted_message = bytes.fromhex(user_encode)
+                decrypted_message = private_key.decrypt(
+                    encrypted_message,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
                 )
-            )
+                if user != decrypted_message.decode():
+                    with open('server.log', 'a') as f:
+                        f.write(f'ASKQUEUE: {user} em {datetime.now()}: USER INVÁLIDO\n')
+                    print(f'ASKQUEUE: {user} em {datetime.now()}: USER INVÁLIDO\n')
+                    return "R//User inválido".encode()
+                
+                mensagens = [user]
+                i = 0
 
-            if user != decrypted_message.decode():
+                # Lendo as mensagens salvas no arquivo de log e formatando
+                if os.path.exists('messages.log'):
+                    with open('messages.log', 'r') as f:
+                        for linha in f:
+                            i += 1
+                            partes = linha.strip().split(";;")
+                            if (partes[0] == '0' and (partes[2] + ".p12") == user):
+                                mensagens.append(f"{i};;{partes[1]};;{partes[3]};;{partes[4]}")
+
+                resposta = "//".join(mensagens)
                 with open('server.log', 'a') as f:
-                    f.write(f'ASKQUEUE: {user} em {datetime.now()}: USER INVÁLIDO\n')
-                print(f'ASKQUEUE: {user} em {datetime.now()}: USER INVÁLIDO\n')
-                return "R//User inválido".encode()
-            
-            mensagens = [user]
-            i = 0
-
-            # Lendo as mensagens salvas no arquivo de log e formatando
-            if os.path.exists('messages.log'):
-                with open('messages.log', 'r') as f:
-                    for linha in f:
-                        i += 1
-                        partes = linha.strip().split(";;")
-                        if (partes[0] == '0' and (partes[2] + ".p12") == user):
-                            mensagens.append(f"{i};;{partes[1]};;{partes[3]};;{partes[4]}")
-
-            resposta = "//".join(mensagens)
-            with open('server.log', 'a') as f:
-                    f.write(f'ASKQUEUE: {user} em {datetime.now()}: SUCESSO\n')
-            print(f'ASKQUEUE: {user} em {datetime.now()}: SUCESSO\n')
-            return resposta.encode()
-        
-        elif tipo == 'getmsg':
-            user, num = tail.split("//")
-            encrypted_message = bytes.fromhex(num)
-            (private_key, user_cert, ca_cert, public_key) = self.get_userdata(user)
-            decrypted_message = private_key.decrypt(
-                encrypted_message,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
-
-            resposta = "SA"
-            
-            i = int(decrypted_message.decode())
-
-            # Verificar se o número de mensagem é maior do que o número total de linhas no arquivo
-            with open('messages.log', 'r') as f:
-                num_linhas = sum(1 for linha in f)
-            if i > num_linhas:
-                resposta = "NE"
-                with open('server.log', 'a') as f:
-                    f.write(f'GETMSG: {user} em {datetime.now()}: NÚMERO DE MENSAGEM INVÁLIDO\n')
-                print(f'GETMSG: {user} em {datetime.now()}: NÚMERO DE MENSAGEM INVÁLIDO\n')
-                return ("R//" + resposta).encode()
-
-            with open('messages.log', 'r') as f:
-                lines = f.readlines()
-
-            # Modifique as linhas conforme necessário
-            for j, linha in enumerate(lines, start=1):
-                if j == i:
-                    parteslinha = linha.split(";;")
-                    if (parteslinha[2] + ".p12") == user:
-                        resposta = f"{parteslinha[1]};;{parteslinha[3]};;{parteslinha[4]};;{parteslinha[5]}"
-                        parteslinha[0] = '1'
-                        lines[j - 1] = ";;".join(parteslinha)  # Substitui a linha especificada na lista de linhas
-                        break
-
-            # Reescreva o arquivo com as linhas modificadas
-            with open('messages.log', 'w') as f:
-                f.writelines(lines)
-            
-            if resposta == "SA":
-                with open('server.log', 'a') as f:
-                    f.write(f'GETMSG: {user} em {datetime.now()} tentou consultar mensagem nº{i}: SEM AUTORIZAÇÃO DE CONSULTA DESSA MENSAGEM\n')
-                print(f'GETMSG: {user} em {datetime.now()} tentou consultar mensagem nº{i}: SEM AUTORIZAÇÃO DE CONSULTA DESSA MENSAGEM\n')
+                        f.write(f'ASKQUEUE: {user} em {datetime.now()}: SUCESSO\n')
+                print(f'ASKQUEUE: {user} em {datetime.now()}: SUCESSO\n')
+                return resposta.encode()
             else:
                 with open('server.log', 'a') as f:
-                    f.write(f'GETMSG: {user} em {datetime.now()} consultou mensagem nº{i}: SUCESSO\n')
-                print(f'GETMSG: {user} em {datetime.now()} consultou mensagem nº{i}: SUCESSO\n')
+                    f.write(f'ASKQUEUE: {user} em {datetime.now()}: ASSINATURA INVÁLIDA\n')
+                print(f'ASKQUEUE: {user} em {datetime.now()}: ASSINATURA INVÁLIDA\n')
+                return "AI".encode()
+            
+        elif tipo == 'getmsg':
+            user, u_encode = tail.split("//")
+            num, signature = u_encode.split("\n\n")
+            (private_key, user_cert, ca_cert, public_key) = self.get_userdata(user)
+            if verify_signature(public_key, num, signature):
+                encrypted_message = bytes.fromhex(num)
+                (private_key, user_cert, ca_cert, public_key) = self.get_userdata('MSG_SERVER.p12')
+                decrypted_message = private_key.decrypt(
+                    encrypted_message,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
+                )
 
-            return ("R//" + resposta).encode()
+                resposta = "SA"
+                
+                i = int(decrypted_message.decode())
+
+                # Verificar se o número de mensagem é maior do que o número total de linhas no arquivo
+                with open('messages.log', 'r') as f:
+                    num_linhas = sum(1 for linha in f)
+                if i > num_linhas:
+                    resposta = "NE"
+                    with open('server.log', 'a') as f:
+                        f.write(f'GETMSG: {user} em {datetime.now()}: NÚMERO DE MENSAGEM INVÁLIDO\n')
+                    print(f'GETMSG: {user} em {datetime.now()}: NÚMERO DE MENSAGEM INVÁLIDO\n')
+                    return ("R//" + resposta).encode()
+
+                with open('messages.log', 'r') as f:
+                    lines = f.readlines()
+
+                # Modifique as linhas conforme necessário
+                for j, linha in enumerate(lines, start=1):
+                    if j == i:
+                        parteslinha = linha.split(";;")
+                        if (parteslinha[2] + ".p12") == user:
+                            resposta = f"{parteslinha[1]};;{parteslinha[3]};;{parteslinha[4]};;{parteslinha[5]}"
+                            parteslinha[0] = '1'
+                            lines[j - 1] = ";;".join(parteslinha)  # Substitui a linha especificada na lista de linhas
+                            break
+
+                # Reescreva o arquivo com as linhas modificadas
+                with open('messages.log', 'w') as f:
+                    f.writelines(lines)
+                
+                if resposta == "SA":
+                    with open('server.log', 'a') as f:
+                        f.write(f'GETMSG: {user} em {datetime.now()} tentou consultar mensagem nº{i}: SEM AUTORIZAÇÃO DE CONSULTA DESSA MENSAGEM\n')
+                    print(f'GETMSG: {user} em {datetime.now()} tentou consultar mensagem nº{i}: SEM AUTORIZAÇÃO DE CONSULTA DESSA MENSAGEM\n')
+                else:
+                    with open('server.log', 'a') as f:
+                        f.write(f'GETMSG: {user} em {datetime.now()} consultou mensagem nº{i}: SUCESSO\n')
+                    print(f'GETMSG: {user} em {datetime.now()} consultou mensagem nº{i}: SUCESSO\n')
+
+                return ("R//" + resposta).encode()
+            else:
+                with open('server.log', 'a') as f:
+                    f.write(f'GETMSG: {user} em {datetime.now()}: ASSINATURA INVÁLIDA\n')
+                print(f'GETMSG: {user} em {datetime.now()}: ASSINATURA INVÁLIDA\n')
+                return "AI".encode()
 
 
 

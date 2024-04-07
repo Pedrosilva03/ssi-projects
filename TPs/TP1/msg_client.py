@@ -64,6 +64,7 @@ class Client:
     def receive(self, msg=b''):
         if msg.decode() == "ME": print("Mensagem enviada com sucesso")
         if msg.decode() == self.user: print("Nenhuma mensagem por ler")
+        if msg.decode() == "AI": print("Assinatura inválida")
         else:
             partes = msg.decode().split("//")
             if partes[0] == self.user:
@@ -133,12 +134,9 @@ class Client:
             hashes.SHA256()
         )
 
-        # Convertendo a assinatura para uma sequência de bytes
-        signature_bytes = signature
-
         # Convertendo as mensagens criptografadas e assinatura para hexadecimal
         encrypted_message_hex = encrypted_message.hex()
-        signature_hex = signature_bytes.hex()
+        signature_hex = signature.hex()
 
         # Criando a mensagem com os dados criptografados e assinatura
         signed_message = f'send;;{self.user}||{dest}||{subj}||{encrypted_message_hex}\n\n{signature_hex}'
@@ -146,10 +144,11 @@ class Client:
         return signed_message
 
     def askqueue(self):
+        print(self.user)
         if self.get_userdata(self.user) == None:
             print("Certificado inválido")
             return None
-        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
+        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata('MSG_SERVER.p12')
 
         encrypted_message = dest_public_key.encrypt(
             self.user.encode(),
@@ -160,16 +159,29 @@ class Client:
             )
         )
 
+        (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
+
+        signature = private_key.sign(
+            encrypted_message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+
         # Convertendo as mensagens criptografadas e assinatura para hexadecimal
         encrypted_message_hex = encrypted_message.hex()
-        signed_message = f'askqueue;;{self.user}//{encrypted_message_hex}'
+        signature_hex = signature.hex()
+        
+        signed_message = f'askqueue;;{self.user}//{encrypted_message_hex}\n\n{signature_hex}'
         return signed_message
 
     def getmsg(self, num):
         if self.get_userdata(self.user) == None:
             print("Certificado inválido")
             return None
-        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata(self.user)
+        (dest_private_key, dest_user_cert, dest_ca_cert, dest_public_key) = self.get_userdata('MSG_SERVER.p12')
 
         encrypted_message = dest_public_key.encrypt(
             num.encode(),
@@ -180,9 +192,22 @@ class Client:
             )
         )
 
+        (private_key, user_cert, ca_cert, public_key) = self.get_userdata(self.user)
+
+        signature = private_key.sign(
+            encrypted_message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        
+
         # Convertendo as mensagens criptografadas e assinatura para hexadecimal
         encrypted_message_hex = encrypted_message.hex()
-        signed_message = f'getmsg;;{self.user}//{encrypted_message_hex}'
+        signature_hex = signature.hex()
+        signed_message = f'getmsg;;{self.user}//{encrypted_message_hex}\n\n{signature_hex}'
         return signed_message
     
     def send(self):
