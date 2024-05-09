@@ -161,3 +161,7 @@ cython_debug/
 
 # MacOS Trash
 *.DS_Store
+
+TPs/TP2/bin/*
+TPs/TP2/obj/*
+TPs/TP2/tmp/*
