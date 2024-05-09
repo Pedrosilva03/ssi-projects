@@ -150,6 +150,8 @@ int main(){
             while((entrada = readdir(inbox)) != NULL){
                 printf("%s\n", entrada->d_name);
             }
+
+            closedir(inbox);
         }
         else if(strcmp(command, "concordia-ler") == 0){
             char* id = strtok(NULL, "\n");
@@ -169,6 +171,61 @@ int main(){
             strtok(buffer, "\n");
             char* msg = strtok(NULL, "\n");
             printf("%s\n", msg);
+        }
+        else if(strcmp(command, "concordia-responder") == 0){
+            char* id = strtok(NULL, "\n");
+
+            char mensagem[MAX_MSG_SIZE];
+            printf("Mensagem: ");
+            scanf("%[^\n]", mensagem);
+
+            char request[BUFSIZ];
+
+            strcpy(request, "enviar\n");
+
+            char currentString[12];
+            sprintf(currentString, "%d\n", current);
+            strcat(request, currentString);
+
+            char destID[12];
+
+            char path[BUFSIZ];
+            strcpy(path, USER_PATH);
+            char aux[BUFSIZ];
+            snprintf(aux, sizeof(aux), "/%s/mensagem_%s.txt", currentStr, id);
+            strcat(path, aux);
+            FILE* f = fopen(path, "r");
+            fgets(destID, sizeof(destID), f);
+            strcat(request, destID);
+            strcat(request, "\n");
+            
+            strcat(request, mensagem);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
+        }
+        else if(strcmp(command, "concordia-remover") == 0){
+            char* id = strtok(NULL, "\n");
+
+            char request[BUFSIZ];
+
+            strcpy(request, "remove\n");
+
+            strcat(request, currentStr);
+            strcat(request, "\n");
+
+            strcat(request, id);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
         }
         memset(line, '\0', sizeof(line));
     }

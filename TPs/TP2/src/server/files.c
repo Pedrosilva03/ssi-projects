@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "../utils/paths.h"
 #include "../utils/utils.h"
 
@@ -98,4 +99,28 @@ void addMensagem(char* rem, char* dest, char* msg){
     fprintf(mensagem, "%s\n", msg);
     fprintf(mensagem, "%ld\n", strlen(msg));
     fclose(mensagem);
+}
+
+void removeMensagem(char* currentStr, char* id){
+    char pathComparison[BUFSIZ];
+    snprintf(pathComparison, sizeof(pathComparison), "mensagem_%s.txt", id);
+
+    char path[BUFSIZ];
+    strcpy(path, USER_PATH);
+    strcat(path, "/");
+    strcat(path, currentStr);
+
+    DIR* inbox = opendir(path);
+    struct dirent *entrada;
+
+    while((entrada = readdir(inbox)) != NULL){
+        if(strcmp(entrada->d_name, pathComparison) == 0){
+            strcat(path, "/");
+            strcat(path, entrada->d_name);
+            remove(path);
+            break;
+        }
+    }
+
+    closedir(inbox);
 }

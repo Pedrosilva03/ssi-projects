@@ -39,4 +39,10 @@ void handle_command(char *request){
 
         addMensagem(rem, dest, mensagem);
     }
+    else if(strcmp(command, "remove") == 0){
+        char* rem = strtok(NULL, "\n");
+        char* mid = strtok(NULL, "\n");
+
+        removeMensagem(rem, mid);   
+    }
 }
