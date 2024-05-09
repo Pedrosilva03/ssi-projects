@@ -7,8 +7,10 @@
 #include "../utils/utils.h"
 #include <pwd.h>
 #include <time.h>
+#include <dirent.h>
 
 int current;
+char currentStr[12];
 int ativacao = 0;
 int status = 1;
 
@@ -16,6 +18,7 @@ int verificaUserServico(){
     int fd;
     char buffer[BUFSIZ];
     current = getuid();
+    sprintf(currentStr, "%d", current);
     if(current <= 0){
         puts("System user error");
         return 0;
@@ -133,6 +136,20 @@ int main(){
             fd = open(PIPE_READ, O_WRONLY);
             write(fd, request, strlen(request));
             close(fd);
+        
+        }
+        else if(strcmp(command, "concordia-listar\n") == 0){
+            char path[BUFSIZ];
+            strcpy(path, USER_PATH);
+            strcat(path, "/");
+            strcat(path, currentStr);
+
+            DIR* inbox = opendir(path);
+            struct dirent *entrada;
+
+            while((entrada = readdir(inbox)) != NULL){
+                printf("%s\n", entrada->d_name);
+            }
         }
         else if(strcmp(command, "concordia-ler") == 0){
             char* id = strtok(NULL, "\n");
