@@ -33,9 +33,10 @@ void handle_command(char *request){
         removeActivation(user);
     }
     else if(strcmp(command, "enviar") == 0){
+        char* rem = strtok(NULL, "\n");
         char* dest = strtok(NULL, "\n");
         char* mensagem = strtok(NULL, "\n");
 
-        addMensagem(dest, mensagem);
+        addMensagem(rem, dest, mensagem);
     }
 }

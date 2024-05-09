@@ -84,7 +84,7 @@ int checkActivation(char* user){
     return 0;
 }
 
-void addMensagem(char* dest, char* msg){
+void addMensagem(char* rem, char* dest, char* msg){
     char path[BUFSIZ];
     char aux[100];
 
@@ -93,7 +93,9 @@ void addMensagem(char* dest, char* msg){
     snprintf(aux, sizeof(aux), "/%s/mensagem_%d.txt", dest, rand() % MAX_MSG_ID);
     strcat(path, aux);
 
-    FILE* mensagem = fopen(path, "w");
+    FILE* mensagem = fopen(path, "a");
+    fprintf(mensagem, "%s\n", rem);
     fprintf(mensagem, "%s\n", msg);
+    fprintf(mensagem, "%ld\n", strlen(msg));
     fclose(mensagem);
 }

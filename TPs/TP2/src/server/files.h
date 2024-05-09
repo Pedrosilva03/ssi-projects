@@ -5,6 +5,6 @@
 int addActivation(char* user);
 void removeActivation(char* user);
 int checkActivation(char* user);
-void addMensagem(char* dest, char* msg);
+void addMensagem(char* rem, char* dest, char* msg);
 
 #endif

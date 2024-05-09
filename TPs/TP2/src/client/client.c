@@ -115,6 +115,10 @@ int main(){
 
             strcpy(request, "enviar\n");
 
+            char currentString[12];
+            sprintf(currentString, "%d\n", current);
+            strcat(request, currentString);
+
             char destID[12];
             struct passwd *destwd = getpwnam(dest);
             sprintf(destID, "%d", destwd->pw_uid);
@@ -129,6 +133,25 @@ int main(){
             fd = open(PIPE_READ, O_WRONLY);
             write(fd, request, strlen(request));
             close(fd);
+        }
+        else if(strcmp(command, "concordia-ler") == 0){
+            char* id = strtok(NULL, "\n");
+            char path[BUFSIZ];
+            strcpy(path, USER_PATH);
+
+            char aux[BUFSIZ];
+            snprintf(aux, sizeof(aux), "/%d/mensagem_%s.txt", current, id);
+            strcat(path, aux);
+
+            char buffer[BUFSIZ];
+            int fd;
+            fd = open(path, O_RDONLY);
+            read(fd, buffer, sizeof(buffer));
+            close(fd);
+
+            strtok(buffer, "\n");
+            char* msg = strtok(NULL, "\n");
+            printf("%s\n", msg);
         }
         memset(line, '\0', sizeof(line));
     }
