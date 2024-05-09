@@ -10,7 +10,10 @@ int initFifos(){
 
     int pipeWrite = mkfifo(PIPE_WRITE, 0666);
     int pipeRead = mkfifo(PIPE_READ, 0666);
-    
+
+    chmod(PIPE_WRITE, 0666);
+    chmod(PIPE_READ, 0666);
+
     if(pipeWrite == 0 && pipeRead == 0) return 1;
     return 0;
 }

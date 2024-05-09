@@ -6,22 +6,25 @@
 #include "../utils/paths.h"
 #include "../utils/utils.h"
 
-char* current;
+int current;
 int ativacao = 0;
 int status = 1;
 
 int verificaUserServico(){
     int fd;
     char buffer[BUFSIZ];
-    current = getlogin();
-    if(!current){
+    current = getuid();
+    if(current <= 0){
         puts("System user error");
         return 0;
     }
 
     strcpy(buffer, "checkUserActivation\n");
 
-    strcat(buffer, current);
+    char currentString[BUFSIZ];
+    sprintf(currentString, "%d", current);
+
+    strcat(buffer, currentString);
     strcat(buffer, "\n");
 
     fd = open(PIPE_READ, O_WRONLY);
@@ -43,6 +46,7 @@ int main(){
     if((ativacao = verificaUserServico()) == 0){
         puts("User not activated in the system\nUse the command 'concordia-ativar' to activate");
     }
+    else puts("User activated");
 
     char command[BUFSIZ];
 
@@ -56,7 +60,10 @@ int main(){
             char request[BUFSIZ];
 
             strcpy(request, "ativar\n");
-            strcat(request, current);
+
+            char currentString[BUFSIZ];
+            sprintf(currentString, "%d", current);
+            strcat(request, currentString);
             strcat(request, LIMITADOR_MENSAGENS);
 
             fd = open(PIPE_READ, O_WRONLY);

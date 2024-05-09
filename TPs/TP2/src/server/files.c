@@ -5,7 +5,7 @@
 #include "../utils/paths.h"
 
 int addActivation(char* user){
-    FILE* f = fopen(ACTIVE_USERS, "w");
+    FILE* f = fopen(ACTIVE_USERS, "a");
     int n = fprintf(f, "%s\n", user);
     fclose(f);
     if(n > 0) return 1;
