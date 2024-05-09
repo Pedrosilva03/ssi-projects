@@ -4,11 +4,24 @@
 #include <string.h>
 #include "../utils/paths.h"
 
+FILE* createInbox(char* user){
+    char path[BUFSIZ];
+
+    strcpy(path, USER_PATH);
+    strcat(path, "/");
+    strcat(path, user);
+    strcat(path, ".txt");
+
+    FILE* newInbox = fopen(path, "w+");
+    return newInbox;
+}
+
 int addActivation(char* user){
     FILE* f = fopen(ACTIVE_USERS, "a");
     int n = fprintf(f, "%s\n", user);
     fclose(f);
-    if(n > 0) return 1;
+
+    if(n > 0 && createInbox(user)) return 1;
     return 0;
 }
 
