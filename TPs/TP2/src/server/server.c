@@ -8,6 +8,8 @@
 #include "handler.h"
 
 int main(){
+    srand(time(NULL));
+    
     if(!initFifos()){
         puts("Erro ao iniciar FIFO's");
         return EXIT_FAILURE;

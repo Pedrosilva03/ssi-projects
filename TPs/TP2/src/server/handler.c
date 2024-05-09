@@ -28,4 +28,14 @@ void handle_command(char *request){
         write(fd, response, strlen(response));
         close(fd);
     }
+    else if(strcmp(command, "desativar") == 0){
+        char* user = strtok(NULL, "\n");
+        removeActivation(user);
+    }
+    else if(strcmp(command, "enviar") == 0){
+        char* dest = strtok(NULL, "\n");
+        char* mensagem = strtok(NULL, "\n");
+
+        addMensagem(dest, mensagem);
+    }
 }

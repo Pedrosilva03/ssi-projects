@@ -2,18 +2,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "../utils/paths.h"
+#include "../utils/utils.h"
 
-FILE* createInbox(char* user){
+int createInbox(char* user){
     char path[BUFSIZ];
 
     strcpy(path, USER_PATH);
     strcat(path, "/");
     strcat(path, user);
-    strcat(path, ".txt");
 
-    FILE* newInbox = fopen(path, "w+");
-    return newInbox;
+    int status = mkdir(path, S_IRWXU | S_IRGRP | S_IWGRP | S_IXGRP);
+    chown(path, -1, atoi(user));
+    return status;
 }
 
 int addActivation(char* user){
@@ -21,8 +24,35 @@ int addActivation(char* user){
     int n = fprintf(f, "%s\n", user);
     fclose(f);
 
-    if(n > 0 && createInbox(user)) return 1;
+    if(n > 0 && createInbox(user) == 0) return 1;
     return 0;
+}
+
+void removeActivation(char* user){
+    FILE* f = fopen(ACTIVE_USERS, "r");
+
+    char novaData[BUFSIZ];
+    strcpy(novaData, "");
+    char linha[12];
+
+    while(fgets(linha, sizeof(linha), f) != NULL){
+        if(!(atoi(linha) == atoi(user))){
+            strcat(novaData, linha);
+        }
+    }
+    fclose(f);
+
+    f = fopen(ACTIVE_USERS, "w");
+    fprintf(f, "%s", novaData);
+    fclose(f);
+
+    char path[BUFSIZ];
+
+    strcpy(path, USER_PATH);
+    strcat(path, "/");
+    strcat(path, user);
+
+    removeDir(path);
 }
 
 int checkActivation(char* user){
@@ -52,4 +82,18 @@ int checkActivation(char* user){
     // Fecha o ficheiro e retorna 0 indicando que a string não foi encontrada
     fclose(file);
     return 0;
+}
+
+void addMensagem(char* dest, char* msg){
+    char path[BUFSIZ];
+    char aux[100];
+
+    strcpy(path, USER_PATH);
+
+    snprintf(aux, sizeof(aux), "/%s/mensagem_%d.txt", dest, rand() % MAX_MSG_ID);
+    strcat(path, aux);
+
+    FILE* mensagem = fopen(path, "w");
+    fprintf(mensagem, "%s\n", msg);
+    fclose(mensagem);
 }
