@@ -61,8 +61,12 @@ int criarGrupo(char* uid, char* nome){
     }
 }
 
-int delGrupo(char* uid, char* nome){
-    return 0;
+int delGrupo(char* nome, char* uid){
+    int status = 0;
+    char command[128];
+    snprintf(command, sizeof(command), "sudo groupdel %s", nome);
+    status = system(command);
+    return status;
 }
 
 int addMember(char* nome, char* new){

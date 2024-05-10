@@ -283,6 +283,37 @@ int main(){
             else puts("Error creating group");
 
         }
+        else if(strcmp(command, "concordia-grupo-remover") == 0){
+            char* nome = strtok(NULL, "\n");
+
+            char request[BUFSIZ];
+
+            strcpy(request, "grupodel\n");
+
+            char destID[12];
+            struct passwd *destwd = getpwuid(current);
+            sprintf(destID, "%s", destwd->pw_name);
+            strcat(request, destID);
+            strcat(request, "\n");
+
+            strcat(request, nome);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
+
+            fd = open(PIPE_WRITE, O_RDONLY);
+            read(fd, buffer, sizeof(buffer));
+            close(fd);
+
+            int res = atoi(strtok(strdup(buffer), "\n"));
+            if(res == 0) puts("Group deleted");
+            else puts("Error deleting group");
+
+        }
         else if(strcmp(command, "concordia-grupo-destinatario-adicionar") == 0){
             char* nome = strtok(NULL, " ");
             char* new = strtok(NULL, "\n");

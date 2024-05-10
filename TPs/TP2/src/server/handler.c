@@ -62,7 +62,7 @@ void handle_command(char *request){
         char* uid = strtok(NULL, "\n");
         char* nome = strtok(NULL, "\n");
         char *newUID = strtok(NULL, "\n");
-        int status = 0;
+        int status = 1;
         if(verifyAdmin(nome, uid) == 1){
             status = addMember(nome, newUID);
         }
@@ -76,9 +76,22 @@ void handle_command(char *request){
         char* uid = strtok(NULL, "\n");
         char* nome = strtok(NULL, "\n");
         char *newUID = strtok(NULL, "\n");
-        int status = 0;
+        int status = 1;
         if(verifyAdmin(nome, uid) == 1){
             status = remMember(nome, newUID);
+        }
+        char response[4];
+        sprintf(response, "%d\n", status);
+        fd = open(PIPE_WRITE, O_WRONLY);
+        write(fd, response, strlen(response));
+        close(fd);
+    }
+    else if(strcmp(command, "grupodel") == 0){
+        char* uid = strtok(NULL, "\n");
+        char* nome = strtok(NULL, "\n");
+        int status = 1;
+        if(verifyAdmin(nome, uid) == 1){
+            status = delGrupo(nome, uid);
         }
         char response[4];
         sprintf(response, "%d\n", status);
