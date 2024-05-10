@@ -5,6 +5,7 @@
 #include <string.h>
 #include "files.h"
 #include "../utils/paths.h"
+#include "groups.h"
 
 void handle_command(char *request){
     int fd;
@@ -44,5 +45,31 @@ void handle_command(char *request){
         char* mid = strtok(NULL, "\n");
 
         removeMensagem(rem, mid);   
+    }
+    else if(strcmp(command, "grupoc") == 0){
+        char* uid = strtok(NULL, "\n");
+        char* nome = strtok(NULL, "\n");
+
+        int status = criarGrupo(uid, nome);
+
+        char response[4];
+        sprintf(response, "%d\n", status);
+        fd = open(PIPE_WRITE, O_WRONLY);
+        write(fd, response, strlen(response));
+        close(fd);
+    }
+    else if(strcmp(command, "grupoadd") == 0){
+        char* uid = strtok(NULL, "\n");
+        char* nome = strtok(NULL, "\n");
+        char *newUID = strtok(NULL, "\n");
+        int status = 0;
+        if(verifyAdmin(nome, uid) == 1){
+            status = addMember(nome, newUID);
+        }
+        char response[4];
+        sprintf(response, "%d\n", status);
+        fd = open(PIPE_WRITE, O_WRONLY);
+        write(fd, response, strlen(response));
+        close(fd);
     }
 }

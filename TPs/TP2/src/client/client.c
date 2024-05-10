@@ -57,6 +57,8 @@ int main(){
     char line[BUFSIZ];
 
     while(status == 1){
+        memset(line, '\0', sizeof(line));
+        memset(buffer, '\0', sizeof(buffer));
         puts("\nCommand:");
         read(STDIN_FILENO, line, sizeof(line));
         char* tmp = strdup(line);
@@ -66,6 +68,10 @@ int main(){
             continue;
         }
         else if(strcmp(command, "concordia-ativar\n") == 0){
+            if(ativacao == 1){
+                puts("User is active already");
+                continue;
+            }
             char request[BUFSIZ];
 
             strcpy(request, "ativar\n");
@@ -92,6 +98,10 @@ int main(){
         }
         else if(ativacao == 0) goto act;
         else if(strcmp(command, "concordia-desativar\n") == 0){
+            if(ativacao == 0){
+                puts("User is inactive already");
+                continue;
+            }
             char request[BUFSIZ];
 
             strcpy(request, "desativar\n");
@@ -124,6 +134,10 @@ int main(){
 
             char destID[12];
             struct passwd *destwd = getpwnam(dest);
+            if(destwd == NULL){
+                puts("User not found");
+                continue;
+            }
             sprintf(destID, "%d", destwd->pw_uid);
             strcat(request, destID);
             strcat(request, "\n");
@@ -165,6 +179,10 @@ int main(){
             char buffer[BUFSIZ];
             int fd;
             fd = open(path, O_RDONLY);
+            if(fd < 0){
+                puts("Mensagem não encontrada");
+                continue;
+            }
             read(fd, buffer, sizeof(buffer));
             close(fd);
 
@@ -195,6 +213,10 @@ int main(){
             snprintf(aux, sizeof(aux), "/%s/mensagem_%s.txt", currentStr, id);
             strcat(path, aux);
             FILE* f = fopen(path, "r");
+            if(f == NULL){
+                puts("Mensagem não encontrada");
+                continue;
+            }
             fgets(destID, sizeof(destID), f);
             strcat(request, destID);
             strcat(request, "\n");
@@ -227,7 +249,71 @@ int main(){
             write(fd, request, strlen(request));
             close(fd);
         }
-        memset(line, '\0', sizeof(line));
+        else if(strcmp(command, "concordia-grupo-criar") == 0){
+            char* nome = strtok(NULL, "\n");
+
+            char request[BUFSIZ];
+
+            strcpy(request, "grupoc\n");
+
+            char destID[12];
+            struct passwd *destwd = getpwuid(current);
+            sprintf(destID, "%s", destwd->pw_name);
+            strcat(request, destID);
+            strcat(request, "\n");
+
+            strcat(request, nome);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
+
+            fd = open(PIPE_WRITE, O_RDONLY);
+            read(fd, buffer, sizeof(buffer));
+            close(fd);
+
+            int res = atoi(strtok(strdup(buffer), "\n"));
+            if(res == 1) puts("Group created");
+            else puts("Error creating group");
+
+        }
+        else if(strcmp(command, "concordia-grupo-destinatario-adicionar") == 0){
+            char* nome = strtok(NULL, " ");
+            char* new = strtok(NULL, "\n");
+
+            char request[BUFSIZ];
+
+            strcpy(request, "grupoadd\n");
+
+            char destID[12];
+            struct passwd *destwd = getpwuid(current);
+            sprintf(destID, "%s", destwd->pw_name);
+            strcat(request, destID);
+            strcat(request, "\n");
+
+            strcat(request, nome);
+            strcat(request, "\n");
+
+            strcat(request, new);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
+
+            fd = open(PIPE_WRITE, O_RDONLY);
+            read(fd, buffer, sizeof(buffer));
+            close(fd);
+
+            int res = atoi(strtok(strdup(buffer), "\n"));
+            if(res == 0) puts("Member added");
+            else puts("Error adding member");
+        }
     }
 
     return EXIT_SUCCESS;

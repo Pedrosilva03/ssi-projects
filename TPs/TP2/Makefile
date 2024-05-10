@@ -10,8 +10,8 @@ folders:
 
 # SERVER
 
-bin/server: obj/server/server.o obj/utils/utils.o obj/server/files.o obj/server/handler.o#obj/server/handler.o obj/server/task.o obj/server/db.o obj/server/escalonador.o obj/server/program.o
-	gcc -g obj/utils/utils.o obj/server/server.o obj/server/files.o obj/server/handler.o -o bin/server
+bin/server: obj/server/server.o obj/utils/utils.o obj/server/files.o obj/server/handler.o obj/server/groups.o#obj/server/handler.o obj/server/task.o obj/server/db.o obj/server/escalonador.o obj/server/program.o
+	gcc -g obj/utils/utils.o obj/server/server.o obj/server/files.o obj/server/handler.o obj/server/groups.o -o bin/server
 
 obj/server/server.o: src/server/server.c
 	gcc -Wall -g -c src/server/server.c -o obj/server/server.o
@@ -21,6 +21,9 @@ obj/server/handler.o: src/server/handler.c
 
 obj/server/files.o: src/server/files.c
 	gcc -Wall -g -c src/server/files.c -o obj/server/files.o
+
+obj/server/groups.o: src/server/groups.c
+	gcc -Wall -g -c src/server/groups.c -o obj/server/groups.o
 
 # CLIENT
 

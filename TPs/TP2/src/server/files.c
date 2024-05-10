@@ -89,7 +89,8 @@ void addMensagem(char* rem, char* dest, char* msg){
     char path[BUFSIZ];
     char aux[100];
 
-    strcpy(path, USER_PATH);
+    if(atoi(dest) > 0 ) strcpy(path, USER_PATH);
+    else strcpy(path, GROUP_PATH);
 
     snprintf(aux, sizeof(aux), "/%s/mensagem_%d.txt", dest, rand() % MAX_MSG_ID);
     strcat(path, aux);
