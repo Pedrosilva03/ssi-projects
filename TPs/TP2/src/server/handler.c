@@ -72,4 +72,18 @@ void handle_command(char *request){
         write(fd, response, strlen(response));
         close(fd);
     }
+    else if(strcmp(command, "gruporem") == 0){
+        char* uid = strtok(NULL, "\n");
+        char* nome = strtok(NULL, "\n");
+        char *newUID = strtok(NULL, "\n");
+        int status = 0;
+        if(verifyAdmin(nome, uid) == 1){
+            status = remMember(nome, newUID);
+        }
+        char response[4];
+        sprintf(response, "%d\n", status);
+        fd = open(PIPE_WRITE, O_WRONLY);
+        write(fd, response, strlen(response));
+        close(fd);
+    }
 }

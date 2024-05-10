@@ -4,5 +4,6 @@
 int verifyAdmin(char* nome, char* uid);
 int criarGrupo(char* uid, char* nome);
 int addMember(char* nome, char* new);
+int remMember(char* nome, char* new);
 
 #endif

@@ -68,8 +68,16 @@ int delGrupo(char* uid, char* nome){
 int addMember(char* nome, char* new){
     int status = 0;
     char command[128];
-    if(!checkActivation(new)) return 1;
+    if(checkActivation(new) == 0) return 1;
     snprintf(command, sizeof(command), "sudo usermod -aG %s %s", nome, new);
+    status = system(command);
+    return status;
+}
+
+int remMember(char* nome, char* new){
+    int status = 0;
+    char command[128];
+    snprintf(command, sizeof(command), "sudo deluser %s %s", new, nome);
     status = system(command);
     return status;
 }

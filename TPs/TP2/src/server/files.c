@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <pwd.h>
 #include "../utils/paths.h"
 #include "../utils/utils.h"
 
@@ -60,6 +61,14 @@ int checkActivation(char* user){
     FILE *file;
     char line[50];
 
+    char userr[BUFSIZ];
+
+    if(atoi(user) == 0){
+        struct passwd *mem = getpwnam(user);
+        sprintf(userr, "%d", mem->pw_uid);
+    }
+    else sprintf(userr, "%s", user);
+
     // Abre o ficheiro para leitura
     file = fopen(ACTIVE_USERS, "r");
     if (file == NULL) {
@@ -73,7 +82,7 @@ int checkActivation(char* user){
         line[strcspn(line, "\n")] = '\0';
 
         // Verifica se a linha contém a string alvo
-        if (strcmp(line, user) == 0) {
+        if (strcmp(line, userr) == 0) {
             // Fecha o ficheiro e retorna 1 indicando que a string foi encontrada
             fclose(file);
             return 1;
@@ -89,7 +98,7 @@ void addMensagem(char* rem, char* dest, char* msg){
     char path[BUFSIZ];
     char aux[100];
 
-    if(atoi(dest) > 0 ) strcpy(path, USER_PATH);
+    if(atoi(dest) > 0) strcpy(path, USER_PATH);
     else strcpy(path, GROUP_PATH);
 
     snprintf(aux, sizeof(aux), "/%s/mensagem_%d.txt", dest, rand() % MAX_MSG_ID);

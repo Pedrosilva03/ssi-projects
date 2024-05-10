@@ -8,6 +8,7 @@
 #include <pwd.h>
 #include <time.h>
 #include <dirent.h>
+#include <grp.h>
 
 int current;
 char currentStr[12];
@@ -134,11 +135,13 @@ int main(){
 
             char destID[12];
             struct passwd *destwd = getpwnam(dest);
-            if(destwd == NULL){
-                puts("User not found");
+            struct group *grwd = getgrnam(dest);
+            if(destwd == NULL && grwd == NULL){
+                puts("User or group not found");
                 continue;
             }
-            sprintf(destID, "%d", destwd->pw_uid);
+            if(destwd != NULL) sprintf(destID, "%d", destwd->pw_uid);
+            else sprintf(destID, "%s", grwd->gr_name);
             strcat(request, destID);
             strcat(request, "\n");
             
@@ -313,6 +316,40 @@ int main(){
             int res = atoi(strtok(strdup(buffer), "\n"));
             if(res == 0) puts("Member added");
             else puts("Error adding member");
+        }
+        else if(strcmp(command, "concordia-grupo-destinatario-remover") == 0){
+            char* nome = strtok(NULL, " ");
+            char* new = strtok(NULL, "\n");
+
+            char request[BUFSIZ];
+
+            strcpy(request, "gruporem\n");
+
+            char destID[12];
+            struct passwd *destwd = getpwuid(current);
+            sprintf(destID, "%s", destwd->pw_name);
+            strcat(request, destID);
+            strcat(request, "\n");
+
+            strcat(request, nome);
+            strcat(request, "\n");
+
+            strcat(request, new);
+            strcat(request, "\n");
+
+            strcat(request, LIMITADOR_MENSAGENS);
+
+            fd = open(PIPE_READ, O_WRONLY);
+            write(fd, request, strlen(request));
+            close(fd);
+
+            fd = open(PIPE_WRITE, O_RDONLY);
+            read(fd, buffer, sizeof(buffer));
+            close(fd);
+
+            int res = atoi(strtok(strdup(buffer), "\n"));
+            if(res == 0) puts("Member removed");
+            else puts("Error removing member");
         }
     }
 
