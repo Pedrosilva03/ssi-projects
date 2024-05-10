@@ -8,6 +8,7 @@
 #include <pwd.h>
 #include "../utils/paths.h"
 #include "../utils/utils.h"
+#include <time.h>
 
 int createInbox(char* user){
     char path[BUFSIZ];
@@ -104,7 +105,16 @@ void addMensagem(char* rem, char* dest, char* msg){
     snprintf(aux, sizeof(aux), "/%s/mensagem_%d.txt", dest, rand() % MAX_MSG_ID);
     strcat(path, aux);
 
+    time_t timee;
+    struct tm *ttime;
+    time(&timee);
+    ttime = localtime(&timee);
+
+    char data[128];
+    sprintf(data, "%02d/%02d/%d %02d:%02d:%02d", ttime->tm_mday, ttime->tm_mon + 1, ttime->tm_year + 1900, ttime->tm_hour, ttime->tm_min, ttime->tm_sec);
+
     FILE* mensagem = fopen(path, "a");
+    fprintf(mensagem, "%s\n", data);
     fprintf(mensagem, "%s\n", rem);
     fprintf(mensagem, "%s\n", msg);
     fprintf(mensagem, "%ld\n", strlen(msg));

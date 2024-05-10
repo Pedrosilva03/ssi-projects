@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <grp.h>
 #include "files.h"
+#include "../utils/utils.h"
 
 int verifyAdmin(char* nome, char* uid){
     struct group *grupo = getgrnam(nome);
@@ -66,6 +67,12 @@ int delGrupo(char* nome, char* uid){
     char command[128];
     snprintf(command, sizeof(command), "sudo groupdel %s", nome);
     status = system(command);
+
+    char path[BUFSIZ];
+    strcpy(path, GROUP_PATH);
+    strcat(path, "/");
+    strcat(path, nome);
+    removeDir(path);
     return status;
 }
 

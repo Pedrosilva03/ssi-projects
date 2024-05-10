@@ -123,7 +123,7 @@ int main(){
             char* dest = strtok(NULL, "\n");
             char mensagem[MAX_MSG_SIZE];
             printf("Mensagem: ");
-            scanf("%[^\n]", mensagem);
+            scanf(" %[^\n]", mensagem);
 
             char request[BUFSIZ];
 
@@ -141,7 +141,18 @@ int main(){
                 continue;
             }
             if(destwd != NULL) sprintf(destID, "%d", destwd->pw_uid);
-            else sprintf(destID, "%s", grwd->gr_name);
+            else{
+                sprintf(destID, "%s", grwd->gr_name);
+
+                int i = 0;
+                while(grwd->gr_mem[i] != NULL){
+                    if(strcmp(grwd->gr_mem[i], getpwuid(current)->pw_name) == 0) goto sender;
+                    i++;
+                }
+                puts("User is not in this group. Ask an admin to join");
+                continue;
+            }
+            sender:
             strcat(request, destID);
             strcat(request, "\n");
             
@@ -153,7 +164,7 @@ int main(){
             fd = open(PIPE_READ, O_WRONLY);
             write(fd, request, strlen(request));
             close(fd);
-        
+            memset(mensagem, '\n', sizeof(mensagem));
         }
         else if(strcmp(command, "concordia-listar\n") == 0){
             char path[BUFSIZ];
@@ -165,7 +176,23 @@ int main(){
             struct dirent *entrada;
 
             while((entrada = readdir(inbox)) != NULL){
-                printf("%s\n", entrada->d_name);
+                if(strchr(entrada->d_name, '_') == NULL) continue;
+                char currentPath[BUFSIZ];
+                strcpy(currentPath, path);
+                strcat(currentPath, "/");
+                strcat(currentPath, entrada->d_name);
+
+                char line[1024];
+                int fd = open(currentPath, O_RDONLY);    
+                read(fd, line, sizeof(line));
+                close(fd);
+
+                char* data = strtok(line, "\n");
+                char* rem = strtok(NULL, "\n");
+                strtok(NULL, "\n");
+                int tamanho = atoi(strtok(NULL, "\n"));
+
+                printf("%s ---- %s ---- %d carateres ---- %s\n", data, rem, tamanho, entrada->d_name);
             }
 
             closedir(inbox);
@@ -190,6 +217,7 @@ int main(){
             close(fd);
 
             strtok(buffer, "\n");
+            strtok(NULL, "\n");
             char* msg = strtok(NULL, "\n");
             printf("%s\n", msg);
         }
@@ -359,6 +387,10 @@ int main(){
             char destID[12];
             struct passwd *destwd = getpwuid(current);
             sprintf(destID, "%s", destwd->pw_name);
+            if(strcmp(destID, new) == 0){
+                puts("You are trying to remove yourself from the group. If you are an admin, use the command 'concordia-grupo-remover'");
+                continue;
+            }
             strcat(request, destID);
             strcat(request, "\n");
 
@@ -381,6 +413,58 @@ int main(){
             int res = atoi(strtok(strdup(buffer), "\n"));
             if(res == 0) puts("Member removed");
             else puts("Error removing member");
+        }
+        else if(strcmp(command, "concordia-grupo-listar") == 0){
+            char* nome = strtok(NULL, "\n");
+            
+            struct group* grupo = getgrnam(nome);
+
+            if(grupo == NULL){
+                puts("Group doesn't exist");
+                continue;
+            }
+
+            int i = 0;
+            while(grupo->gr_mem[i]){
+                printf("Member %d: %s\n", i, grupo->gr_mem[i]);
+                i++;
+            }
+        }
+        else if(strcmp(command, "concordia-grupo-ler") == 0){
+            char* nome = strtok(NULL, "\n");
+
+            char path[BUFSIZ];
+            strcpy(path, GROUP_PATH);
+            strcat(path, "/");
+            strcat(path, nome);
+
+            DIR* grupo = opendir(path);
+            if(grupo == NULL){
+                puts("User is not in this group. Ask an admin to join");
+                continue;
+            }
+            else{
+                struct dirent* msg;
+                while((msg = readdir(grupo)) != NULL){
+                    if(strchr(msg->d_name, '_') == NULL) continue;
+                    char pathFile[BUFSIZ];
+                    strcpy(pathFile, path);
+                    strcat(pathFile, "/");
+                    strcat(pathFile, msg->d_name);
+
+                    char line[1024];
+                    int fd = open(pathFile, O_RDONLY);    
+                    read(fd, line, sizeof(line));
+                    close(fd);
+
+                    char* data = strtok(line, "\n");
+                    char* rem = strtok(NULL, "\n");
+                    char* msg = strtok(NULL, "\n");
+
+                    printf("%s ---- %s ---- %s\n", data, rem, msg);
+                }
+            }
+            
         }
     }
 
