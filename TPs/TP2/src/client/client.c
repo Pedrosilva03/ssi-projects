@@ -216,10 +216,11 @@ int main(){
             read(fd, buffer, sizeof(buffer));
             close(fd);
 
-            strtok(buffer, "\n");
-            strtok(NULL, "\n");
+            printf("\n");
+            printf("Data: %s\n", strtok(buffer, "\n"));
+            printf("Remetente: %s\n", getpwuid(atoi(strtok(NULL, "\n")))->pw_name);
             char* msg = strtok(NULL, "\n");
-            printf("%s\n", msg);
+            printf("Mensagem: %s\n", msg);
         }
         else if(strcmp(command, "concordia-responder") == 0){
             char* id = strtok(NULL, "\n");
@@ -236,7 +237,7 @@ int main(){
             sprintf(currentString, "%d\n", current);
             strcat(request, currentString);
 
-            char destID[12];
+            char destID[128];
 
             char path[BUFSIZ];
             strcpy(path, USER_PATH);
@@ -248,6 +249,7 @@ int main(){
                 puts("Mensagem não encontrada");
                 continue;
             }
+            fgets(destID, sizeof(destID), f);
             fgets(destID, sizeof(destID), f);
             strcat(request, destID);
             strcat(request, "\n");
