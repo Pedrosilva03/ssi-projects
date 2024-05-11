@@ -104,10 +104,7 @@ void addMensagem(char* rem, char* dest, char* msg){
     struct group* destGrp = getgrnam(dest);
 
     if(destUser == NULL && destGrp == NULL) return;
-    else if(destUser != NULL && checkActivation(dest) == 0){
-        puts("Merdou");
-        return;
-    }
+    else if(destUser != NULL && checkActivation(dest) == 0) return;
 
     if(atoi(dest) > 0) strcpy(path, USER_PATH);
     else strcpy(path, GROUP_PATH);
