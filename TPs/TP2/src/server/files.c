@@ -9,6 +9,7 @@
 #include "../utils/paths.h"
 #include "../utils/utils.h"
 #include <time.h>
+#include <grp.h>
 
 int createInbox(char* user){
     char path[BUFSIZ];
@@ -98,6 +99,15 @@ int checkActivation(char* user){
 void addMensagem(char* rem, char* dest, char* msg){
     char path[BUFSIZ];
     char aux[100];
+
+    struct passwd* destUser = getpwuid(atoi(dest));
+    struct group* destGrp = getgrnam(dest);
+
+    if(destUser == NULL && destGrp == NULL) return;
+    else if(destUser != NULL && checkActivation(dest) == 0){
+        puts("Merdou");
+        return;
+    }
 
     if(atoi(dest) > 0) strcpy(path, USER_PATH);
     else strcpy(path, GROUP_PATH);

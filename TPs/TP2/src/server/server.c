@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "handler.h"
+#include <time.h>
 
 int main(){
     srand(time(NULL));
