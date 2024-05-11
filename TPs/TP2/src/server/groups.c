@@ -56,8 +56,6 @@ int criarGrupo(char* uid, char* nome){
         }
     }
     else{
-        snprintf(command, sizeof(command), "sudo groupdel %s", nome);
-        system(command);
         return 0;
     }
 }

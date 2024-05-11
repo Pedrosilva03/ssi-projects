@@ -100,8 +100,8 @@ void addMensagem(char* rem, char* dest, char* msg){
     char path[BUFSIZ];
     char aux[100];
 
-    struct passwd* destUser;
-    struct group* destGrp;
+    struct passwd* destUser = NULL;
+    struct group* destGrp = NULL;
 
     if(atoi(dest) > 0) destUser = getpwuid(atoi(dest));
     else destGrp = getgrnam(dest);

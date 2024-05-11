@@ -21,7 +21,7 @@ make
 sudo ./bin/server
 ```
 - O servidor entrará em modo de espera de pedidos.
-- Para fachar o servidor basta fazer ```Ctrl+C```
+- Para fechar o servidor basta fazer ```Ctrl+C```
 
 ### Cliente
 O cliente deve ser executado com um utilizador diferente do servidor. Para trocar de utilizador basta usar o comando

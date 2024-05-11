@@ -20,6 +20,8 @@ int main(){
 
     char request[BUFSIZ];
 
+    printf("Esperando por pedidos...\n");
+
     while(1){
         fd_pipe = open(PIPE_READ, O_RDONLY);
         read(fd_pipe, request, sizeof(request));

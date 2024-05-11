@@ -51,7 +51,7 @@ int main(){
 
     act:
     if((ativacao = verificaUserServico()) == 0){
-        puts("User not activated in the system\nUse the command 'concordia-ativar' to activate");
+        puts("User not activated in the system\nUse the command 'concordia-ativar' to activate so you can use the service");
     }
     else puts("User activated");
 
@@ -310,7 +310,7 @@ int main(){
 
             int res = atoi(strtok(strdup(buffer), "\n"));
             if(res == 1) puts("Group created");
-            else puts("Error creating group");
+            else puts("Error creating group (group already exists or group name is invalid)");
 
         }
         else if(strcmp(command, "concordia-grupo-remover") == 0){
@@ -375,8 +375,8 @@ int main(){
             close(fd);
 
             int res = atoi(strtok(strdup(buffer), "\n"));
-            if(res == 0) puts("Member added");
-            else puts("Error adding member");
+            if(res == 0) puts("Member added or already exists in group");
+            else puts("Error adding member (only the creator of the group can add members)");
         }
         else if(strcmp(command, "concordia-grupo-destinatario-remover") == 0){
             char* nome = strtok(NULL, " ");
