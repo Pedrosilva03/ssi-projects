@@ -1,8 +1,0 @@
-# Respostas das Questões
-## Q1
-O programa `otp.py` utiliza um gerador de números aleatórios seguro, `os.urandom`, que é apropriado para aplicações criptográficas. Este método visa garantir a segurança e imprevisibilidade dos bytes gerados, sendo indicado para situações onde a qualidade dos números aleatórios é crítica.
-Por outro lado, o `bad_otp.py` adota uma abordagem menos segura, utilizando a função `bad_prng` que se baseia no módulo `random`. Essa escolha resulta em uma previsibilidade maior, já que a semente é limitada a apenas 216 possíveis valores. Como resultado, este programa não é recomendado para cenários onde a segurança criptográfica é uma prioridade, pois a previsibilidade dos números aleatórios pode comprometer a integridade e confidencialidade dos dados.
-
-## Q2
-O ataque realizado no ponto anterior, utilizando o programa bad_otp_attack.py, não entra em contradição com o resultado que estabelece a "segurança absoluta" da cifra one-time pad (OTP). A segurança absoluta da cifra OTP é garantida quando a chave é utilizada apenas uma vez (daí o termo "one-time pad") e é completamente aleatória, sendo tão longa quanto a mensagem.
-No entanto, o ataque mencionado explora uma vulnerabilidade específica introduzida na geração de números aleatórios no contexto do programa bad_otp.py. Nesse programa, a função bad_prng utiliza uma semente limitada e previsível, o que compromete a aleatoriedade da chave. Esse não é um problema inerente à cifra OTP em si, mas sim uma implementação inadequada que viola os princípios necessários para garantir a segurança.

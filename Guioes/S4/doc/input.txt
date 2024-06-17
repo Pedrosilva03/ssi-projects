@@ -1,2 +1,0 @@
-Este é um arquivo de teste para cifragem usando ChaCha20.
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
